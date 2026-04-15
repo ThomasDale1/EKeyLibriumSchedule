@@ -21,7 +21,7 @@ function App() {
             </div>
             <div>
               <h1 className="text-lg font-bold">EKeyLibrium</h1>
-              <p className="text-xs text-dark-secondary">Schedule Management</p>
+              <p className="text-xs text-muted-foreground">Schedule Management</p>
             </div>
           </div>
           <UserButton 
@@ -38,7 +38,7 @@ function App() {
         <main className="p-6">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-3xl font-bold mb-2">Bienvenido, {user?.firstName}! 👋</h2>
-            <p className="text-dark-secondary mb-8">Tu portal de gestión de horarios y materias</p>
+            <p className="text-muted-foreground mb-8">Tu portal de gestión de horarios y materias</p>
             
             <div className="grid md:grid-cols-3 gap-6">
               {/* Placeholder para contenido del dashboard */}
@@ -71,7 +71,7 @@ function HomeScreen({
             </div>
             <div>
               <h1 className="text-2xl font-bold text-dark-primary">EKeyLibrium</h1>
-              <p className="text-sm text-dark-secondary">Sistema Inteligente de Inscripción y Horarios</p>
+              <p className="text-sm text-muted-foreground">Sistema Inteligente de Inscripción y Horarios</p>
             </div>
           </div>
         </div>
@@ -144,7 +144,7 @@ function HomeScreen({
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-dark-subtle py-6 px-4 text-center text-sm text-dark-secondary">
+      <footer className="border-t border-dark-subtle py-6 px-4 text-center text-sm text-muted-foreground">
         <p>EKeyLibrium © 2026 • Key Institute • Todos los derechos reservados</p>
         <p className="mt-2">Dominio restringido: @keyinstitute.edu.sv</p>
       </footer>
@@ -174,7 +174,7 @@ function RoleCard({ icon, title, description, color, onClick }: RoleCardProps) {
           {icon}
         </div>
         <h3 className="text-xl font-bold text-dark-primary mb-2">{title}</h3>
-        <p className="text-sm text-dark-secondary leading-relaxed">{description}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
       </div>
     </button>
   )
@@ -205,7 +205,7 @@ function LoginForm({ role, onBack }: LoginFormProps) {
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="mb-6 text-dark-secondary hover:text-dark-primary transition-colors text-sm font-medium flex items-center gap-2"
+        className="mb-6 text-muted-foreground hover:text-dark-primary transition-colors text-sm font-medium flex items-center gap-2"
       >
         ← Volver a roles
       </button>
@@ -218,7 +218,7 @@ function LoginForm({ role, onBack }: LoginFormProps) {
             <Icon className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-bold text-dark-primary">{roleInfo.title}</h2>
-          <p className="text-sm text-dark-secondary mt-2">Inicia sesión con tu cuenta @keyinstitute.edu.sv</p>
+          <p className="text-sm text-muted-foreground mt-2">Inicia sesión con tu cuenta @keyinstitute.edu.sv</p>
         </div>
 
         {/* Clerk Sign In */}
@@ -236,7 +236,7 @@ function LoginForm({ role, onBack }: LoginFormProps) {
         </div>
 
         {/* Info Box */}
-        <div className="rounded-lg bg-dark-input border border-dark-subtle p-4 text-xs text-dark-secondary space-y-2">
+        <div className="rounded-lg bg-dark-input border border-dark-subtle p-4 text-xs text-muted-foreground space-y-2">
           <p>✓ Acceso seguro con verificación de dos factores</p>
           <p>✓ Solo usuarios con dominio @keyinstitute.edu.sv</p>
           <p>✓ Tus datos están protegidos y cifrados</p>
@@ -263,7 +263,7 @@ function Feature({ icon, title, description }: FeatureProps) {
       <div className="flex-shrink-0">{icon}</div>
       <div>
         <h4 className="font-bold text-dark-primary mb-1">{title}</h4>
-        <p className="text-sm text-dark-secondary">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
   )

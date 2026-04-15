@@ -9,6 +9,7 @@ backend/node_modules/
 backend/prisma/client/  # Si generas el cliente ahí
 backend/dist/
 backend/build/
+backend/package-lock.json
 
 # Mobile (Expo/React Native) especifico
 frontend/node_modules/
@@ -24,6 +25,8 @@ frontend/build.gradle
 frontend/settings.gradle
 frontend/gradlew*
 frontend/assets/
+frontend/package-lock.json
+
 
 # Backend adicional
 backend/prisma/migrations/   # Son archivos de texto gigantes que Claude no necesita leer
