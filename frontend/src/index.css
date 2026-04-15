@@ -89,6 +89,13 @@
     box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-ring);
   }
 
+  /* Firefox scrollbar */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-dark-subtle) var(--color-dark-secondary);
+  }
+
+  /* WebKit scrollbar (Chrome, Safari, Edge) */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
