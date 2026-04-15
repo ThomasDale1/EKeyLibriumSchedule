@@ -1,72 +1,68 @@
-import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import { CheckCircle2, Users, BookOpen, BarChart3 } from 'lucide-react'
 
-function App() {
-  const { user } = useUser()
-  const [selectedRole, setSelectedRole] = useState<'student' | 'professor' | 'admin' | null>(null)
+import { AdminLayout } from '@/components/admin/AdminLayout'
+import Dashboard from '@/pages/admin/Dashboard'
+import Materias from '@/pages/admin/Materias'
+import Profesores from '@/pages/admin/Profesores'
+import Estudiantes from '@/pages/admin/Estudiantes'
+import Horarios from '@/pages/admin/Horarios'
+import Salones from '@/pages/admin/Salones'
+import Analytics from '@/pages/admin/Analytics'
+import Settings from '@/pages/admin/Settings'
+import Placeholder from '@/pages/admin/Placeholder'
 
+function App() {
   return (
-    <div className="min-h-screen bg-dark text-dark-primary">
+    <>
       <SignedOut>
-        <HomeScreen selectedRole={selectedRole} setSelectedRole={setSelectedRole} />
+        <HomeScreen />
       </SignedOut>
 
       <SignedIn>
-        <div className="flex items-center justify-between p-4 border-b border-dark-subtle">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-status-accent to-status-info flex items-center justify-center">
-              <BarChart3 className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold">EKeyLibrium</h1>
-              <p className="text-xs text-muted-foreground">Schedule Management</p>
-            </div>
-          </div>
-          <UserButton 
-            afterSignOutUrl="/"
-            appearance={{
-              elements: {
-                userButtonPopoverActionButton: "text-dark-primary",
-                userButtonPopoverContainer: "bg-dark-secondary border border-dark-subtle"
-              }
-            }}
-          />
-        </div>
-
-        <main className="p-6">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-3xl font-bold mb-2">Bienvenido, {user?.firstName}! 👋</h2>
-            <p className="text-muted-foreground mb-8">Tu portal de gestión de horarios y materias</p>
-            
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* Placeholder para contenido del dashboard */}
-              <div className="col-span-full text-center py-16 text-dark-muted">
-                Dashboard en construcción...
-              </div>
-            </div>
-          </div>
-        </main>
+        <Routes>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route
+              path="reports"
+              element={<Placeholder title="Reportes" description="Reportes exportables del sistema" />}
+            />
+            <Route path="materias" element={<Materias />} />
+            <Route path="profesores" element={<Profesores />} />
+            <Route path="estudiantes" element={<Estudiantes />} />
+            <Route path="horarios" element={<Horarios />} />
+            <Route path="salones" element={<Salones />} />
+            <Route
+              path="inscripciones"
+              element={<Placeholder title="Inscripciones" description="Cola y aprobación de inscripciones" />}
+            />
+            <Route
+              path="usuarios"
+              element={<Placeholder title="Usuarios" description="Gestión de roles y permisos del sistema" />}
+            />
+            <Route path="ajustes" element={<Settings />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
       </SignedIn>
-    </div>
+    </>
   )
 }
 
-function HomeScreen({ 
-  selectedRole, 
-  setSelectedRole 
-}: { 
-  selectedRole: 'student' | 'professor' | 'admin' | null
-  setSelectedRole: (role: 'student' | 'professor' | 'admin' | null) => void
-}) {
+function HomeScreen() {
+  const navigate = useNavigate()
+  const [selectedRole, setSelectedRole] = useState<'student' | 'professor' | 'admin' | null>(null)
+
   return (
     <div className="min-h-screen bg-dark flex flex-col">
-      {/* Header */}
       <header className="border-b border-dark-subtle py-6 px-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-status-accent to-status-info flex items-center justify-center">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-status-warning to-amber-500 flex items-center justify-center">
               <BarChart3 className="w-7 h-7 text-white" />
             </div>
             <div>
@@ -74,16 +70,19 @@ function HomeScreen({
               <p className="text-sm text-muted-foreground">Sistema Inteligente de Inscripción y Horarios</p>
             </div>
           </div>
+          <button
+            onClick={() => navigate('/admin')}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Vista previa Admin →
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-4xl">
           {!selectedRole ? (
-            // Role Selection
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              {/* Student Card */}
               <RoleCard
                 icon={<Users className="w-8 h-8" />}
                 title="Estudiante"
@@ -91,8 +90,6 @@ function HomeScreen({
                 color="from-status-info to-blue-400"
                 onClick={() => setSelectedRole('student')}
               />
-
-              {/* Professor Card */}
               <RoleCard
                 icon={<BookOpen className="w-8 h-8" />}
                 title="Profesor"
@@ -100,8 +97,6 @@ function HomeScreen({
                 color="from-status-success to-emerald-400"
                 onClick={() => setSelectedRole('professor')}
               />
-
-              {/* Admin Card */}
               <RoleCard
                 icon={<BarChart3 className="w-8 h-8" />}
                 title="Administrador"
@@ -111,11 +106,9 @@ function HomeScreen({
               />
             </div>
           ) : (
-            // Login Form
             <LoginForm role={selectedRole} onBack={() => setSelectedRole(null)} />
           )}
 
-          {/* Features */}
           {!selectedRole && (
             <div className="mt-16 grid md:grid-cols-2 gap-8">
               <Feature
@@ -143,7 +136,6 @@ function HomeScreen({
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-dark-subtle py-6 px-4 text-center text-sm text-muted-foreground">
         <p>EKeyLibrium © 2026 • Key Institute • Todos los derechos reservados</p>
         <p className="mt-2">Dominio restringido: @keyinstitute.edu.sv</p>
@@ -164,11 +156,9 @@ function RoleCard({ icon, title, description, color, onClick }: RoleCardProps) {
   return (
     <button
       onClick={onClick}
-      className="group relative overflow-hidden rounded-lg border border-dark-subtle bg-dark-secondary p-6 transition-all duration-300 hover:border-status-accent hover:bg-dark-secondary hover:shadow-dark-lg hover:shadow-status-accent/10"
+      className="group relative overflow-hidden rounded-lg border border-dark-subtle bg-dark-secondary p-6 transition-all duration-300 hover:border-status-warning hover:bg-dark-secondary hover:shadow-dark-lg hover:shadow-status-warning/10"
     >
-      {/* Gradient background on hover */}
       <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 transition-opacity duration-300 group-hover:opacity-5`} />
-      
       <div className="relative z-10">
         <div className={`inline-block rounded-lg bg-gradient-to-br ${color} p-3 mb-4 text-white`}>
           {icon}
@@ -202,7 +192,6 @@ function LoginForm({ role, onBack }: LoginFormProps) {
 
   return (
     <div className="max-w-md mx-auto">
-      {/* Back Button */}
       <button
         onClick={onBack}
         className="mb-6 text-muted-foreground hover:text-dark-primary transition-colors text-sm font-medium flex items-center gap-2"
@@ -210,9 +199,7 @@ function LoginForm({ role, onBack }: LoginFormProps) {
         ← Volver a roles
       </button>
 
-      {/* Login Card */}
       <div className="rounded-xl border border-dark-subtle bg-dark-secondary p-8 shadow-dark-xl animate-fade-in">
-        {/* Header */}
         <div className="mb-8 text-center">
           <div className={`inline-block rounded-lg bg-gradient-to-br ${roleInfo.color} p-4 mb-4 text-white`}>
             <Icon className="w-8 h-8" />
@@ -221,31 +208,22 @@ function LoginForm({ role, onBack }: LoginFormProps) {
           <p className="text-sm text-muted-foreground mt-2">Inicia sesión con tu cuenta @keyinstitute.edu.sv</p>
         </div>
 
-        {/* Clerk Sign In */}
         <div className="mb-6">
-          <SignInButton 
-            mode="modal"
-          >
+          <SignInButton mode="modal">
             <Button
               size="lg"
-              className="w-full bg-status-accent hover:bg-blue-600 text-white font-semibold transition-all duration-200"
+              className="w-full bg-status-warning hover:bg-status-warning/90 text-white font-semibold transition-all duration-200"
             >
               Iniciar Sesión
             </Button>
           </SignInButton>
         </div>
 
-        {/* Info Box */}
         <div className="rounded-lg bg-dark-input border border-dark-subtle p-4 text-xs text-muted-foreground space-y-2">
           <p>✓ Acceso seguro con verificación de dos factores</p>
           <p>✓ Solo usuarios con dominio @keyinstitute.edu.sv</p>
           <p>✓ Tus datos están protegidos y cifrados</p>
         </div>
-      </div>
-
-      {/* Security Notice */}
-      <div className="mt-6 text-center text-xs text-dark-muted">
-        <p>Asegúrate de usar una conexión segura (HTTPS)</p>
       </div>
     </div>
   )
@@ -259,8 +237,8 @@ interface FeatureProps {
 
 function Feature({ icon, title, description }: FeatureProps) {
   return (
-    <div className="flex gap-4 p-4 rounded-lg border border-dark-subtle bg-dark-secondary/50 hover:border-status-accent/50 transition-colors duration-300">
-      <div className="flex-shrink-0">{icon}</div>
+    <div className="flex gap-4 p-4 rounded-lg border border-dark-subtle bg-dark-secondary/50 hover:border-status-warning/50 transition-colors duration-300">
+      <div className="shrink-0">{icon}</div>
       <div>
         <h4 className="font-bold text-dark-primary mb-1">{title}</h4>
         <p className="text-sm text-muted-foreground">{description}</p>
