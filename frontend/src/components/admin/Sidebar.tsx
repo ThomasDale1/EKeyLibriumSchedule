@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser, useClerk } from '@clerk/clerk-react'
+import { useMe, usePromoteToAdmin } from '@/hooks/useApiQueries'
 
 type NavItem = {
   to: string
@@ -64,9 +65,26 @@ const sections: NavSection[] = [
   },
 ]
 
+const rolLabel: Record<string, string> = {
+  ADMIN: 'Administrador',
+  PROFESOR: 'Profesor',
+  ESTUDIANTE: 'Estudiante',
+}
+
 export function Sidebar() {
   const { user } = useUser()
   const { signOut } = useClerk()
+  const { data: me } = useMe()
+  const promote = usePromoteToAdmin()
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      window.location.href = '/'
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error)
+    }
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-card">
@@ -146,16 +164,30 @@ export function Sidebar() {
           </div>
           <div className="flex-1 leading-tight">
             <p className="text-sm font-semibold text-foreground">
-              {user?.firstName ?? 'Admin'} {user?.lastName?.[0] ? user.lastName[0] + '.' : ''}
+              {me?.nombre ?? user?.firstName ?? 'Admin'}{' '}
+              {(me?.apellido?.[0] ?? user?.lastName?.[0] ?? '') &&
+                `${me?.apellido?.[0] ?? user?.lastName?.[0]}.`}
             </p>
-            <p className="text-[11px] text-muted-foreground">Administrador</p>
+            <p className="text-[11px] text-muted-foreground">
+              {me ? rolLabel[me.rol] ?? me.rol : 'Cargando...'}
+            </p>
+            {me && me.rol !== 'ADMIN' && (
+              <button
+                onClick={() => promote.mutate()}
+                disabled={promote.isPending}
+                className="mt-1 text-[10px] text-status-warning hover:underline"
+              >
+                {promote.isPending ? 'Promoviendo...' : 'Convertir en admin (dev)'}
+              </button>
+            )}
           </div>
           <button
-            onClick={() => signOut()}
+            onClick={handleSignOut}
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Cerrar sesión"
+            aria-label="Cerrar sesión"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -168,8 +200,10 @@ export function Topbar() {
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur">
       <div className="relative flex-1 max-w-xl">
         <input
+          id="topbar-search"
           type="text"
           placeholder="Buscar cualquier cosa..."
+          aria-label="Buscar en el sistema"
           className="h-10 w-full rounded-lg border border-border bg-card pl-10 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:border-status-warning/50 focus:outline-none focus:ring-2 focus:ring-status-warning/20"
         />
         <svg
@@ -192,9 +226,12 @@ export function Topbar() {
         <span className="text-lg leading-none">+</span> Nuevo Horario
       </button>
 
-      <button className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground">
-        <Bell className="h-4 w-4" />
-        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-status-warning" />
+      <button 
+        className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
+        aria-label="Notificaciones"
+      >
+        <Bell className="h-4 w-4" aria-hidden="true" />
+        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-status-warning" aria-hidden="true" />
       </button>
     </header>
   )

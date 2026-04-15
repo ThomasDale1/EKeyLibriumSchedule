@@ -127,11 +127,19 @@ export function ProgressBar({
     success: 'bg-status-success',
     critical: 'bg-status-critical',
   }
+  const boundedValue = Math.min(100, Math.max(0, value))
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+    <div 
+      className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+      role="progressbar"
+      aria-valuenow={Math.round(boundedValue)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label="Progress"
+    >
       <div
         className={cn('h-full rounded-full transition-all', map[accent])}
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        style={{ width: `${boundedValue}%` }}
       />
     </div>
   )
@@ -140,10 +148,12 @@ export function ProgressBar({
 export function DataTable<T>({
   columns,
   rows,
+  getRowKey,
   empty = 'Sin datos',
 }: {
   columns: { key: keyof T | string; label: string; render?: (row: T) => ReactNode; className?: string }[]
   rows: T[]
+  getRowKey?: (row: T, index: number) => string | number
   empty?: string
 }) {
   return (
@@ -166,18 +176,27 @@ export function DataTable<T>({
               </td>
             </tr>
           )}
-          {rows.map((row, i) => (
-            <tr
-              key={i}
-              className="border-b border-border/60 last:border-0 transition-colors hover:bg-muted/30"
-            >
-              {columns.map((c) => (
-                <td key={String(c.key)} className={cn('px-5 py-3.5 text-foreground', c.className)}>
-                  {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key as string] ?? '')}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row, i) => {
+            const rowKey = (getRowKey ? getRowKey(row, i) : (row as Record<string, unknown>).id) as
+              | string
+              | number
+              | undefined
+            if (rowKey == null) {
+              console.warn('DataTable: No unique key found for row at index', i)
+            }
+            return (
+              <tr
+                key={rowKey ?? i}
+                className="border-b border-border/60 last:border-0 transition-colors hover:bg-muted/30"
+              >
+                {columns.map((c) => (
+                  <td key={String(c.key)} className={cn('px-5 py-3.5 text-foreground', c.className)}>
+                    {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key as string] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

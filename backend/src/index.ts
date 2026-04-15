@@ -1,7 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { clerkMiddleware } from '@clerk/express';
 
+import authRoutes from './routes/auth.routes';
 import carreraRoutes from './routes/carrera.routes';
 import cicloAcademicoRoutes from './routes/cicloAcademico.routes';
 import materiaRoutes from './routes/materia.routes';
@@ -31,6 +33,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Clerk: adjunta la info de autenticación al request (req.auth)
+app.use(clerkMiddleware());
+
 // Ruta de prueba — para verificar que el servidor funciona
 app.get('/health', (req, res) => {
   res.json({
@@ -41,6 +46,7 @@ app.get('/health', (req, res) => {
 });
 
 // Rutas de la API
+app.use('/api/auth', authRoutes);
 app.use('/api/carreras', carreraRoutes);
 app.use('/api/ciclos', cicloAcademicoRoutes);
 app.use('/api/materias', materiaRoutes);

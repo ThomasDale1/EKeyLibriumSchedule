@@ -5,80 +5,74 @@ import {
   CalendarCheck,
   AlertTriangle,
   CheckCircle2,
-  Clock,
+  DoorOpen,
 } from 'lucide-react'
 import { Badge, Card, PageHeader, ProgressBar, StatCard } from '@/components/admin/ui'
+import {
+  Aulas,
+  Carreras,
+  Estudiantes,
+  Inscripciones,
+  Materias,
+  Profesores,
+  Secciones,
+  useMe,
+} from '@/hooks/useApiQueries'
 
 export default function Dashboard() {
+  const { data: me } = useMe()
+  const estudiantes = Estudiantes.useList().data ?? []
+  const profesores = Profesores.useList().data ?? []
+  const materias = Materias.useList().data ?? []
+  const aulas = Aulas.useList().data ?? []
+  const carreras = Carreras.useList().data ?? []
+  const secciones = Secciones.useList().data ?? []
+  const inscripciones = Inscripciones.useList().data ?? []
+
+  const materiasActivas = materias.filter((m: { activa?: boolean }) => m.activa).length
+  const aulasActivas = aulas.filter((a: { activa?: boolean }) => a.activa).length
+  const inscripcionesConfirmadas = inscripciones.filter((i: { estado?: string }) => i.estado === 'CONFIRMADA').length
+  const tasaInscripcion = inscripciones.length
+    ? Math.round((inscripcionesConfirmadas / inscripciones.length) * 100)
+    : 0
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Panel General"
+        title={`Hola, ${me?.nombre ?? 'Admin'} 👋`}
         description="Resumen del sistema académico en tiempo real"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Estudiantes" value="1,284" delta="+4.2%" icon={Users} accent="info" />
-        <StatCard label="Profesores" value="87" delta="+2" icon={GraduationCap} accent="warning" />
-        <StatCard label="Materias activas" value="142" delta="+6.1%" icon={BookOpen} accent="success" />
-        <StatCard
-          label="Inscripciones"
-          value="32.4%"
-          delta="-0.5%"
-          trend="down"
-          icon={CalendarCheck}
-          accent="critical"
-        />
+        <StatCard label="Estudiantes" value={String(estudiantes.length)} icon={Users} accent="info" />
+        <StatCard label="Profesores" value={String(profesores.length)} icon={GraduationCap} accent="warning" />
+        <StatCard label="Materias activas" value={String(materiasActivas)} icon={BookOpen} accent="success" />
+        <StatCard label="Inscripciones conf." value={`${tasaInscripcion}%`} icon={CalendarCheck} accent="critical" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Enrollment chart placeholder */}
         <Card className="lg:col-span-2">
-          <div className="mb-4 flex items-start justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">Inscripciones del Semestre</h3>
-              <p className="text-xs text-muted-foreground">
-                Evolución diaria de registros en el sistema
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Badge variant="muted">30 días</Badge>
-              <Badge variant="warning">En vivo</Badge>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-foreground">Distribución de Recursos</h3>
+            <p className="text-xs text-muted-foreground">Conteo actual del sistema</p>
           </div>
-          <div className="relative h-64 w-full overflow-hidden rounded-lg border border-border bg-gradient-to-b from-status-warning/5 to-transparent">
-            {/* Fake line chart using SVG */}
-            <svg viewBox="0 0 600 200" className="h-full w-full" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f97316" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0,150 C60,140 100,90 160,100 C220,110 260,40 320,60 C380,80 420,130 480,110 C540,90 580,70 600,80 L600,200 L0,200 Z"
-                fill="url(#grad)"
-              />
-              <path
-                d="M0,150 C60,140 100,90 160,100 C220,110 260,40 320,60 C380,80 420,130 480,110 C540,90 580,70 600,80"
-                stroke="#f97316"
-                strokeWidth="2"
-                fill="none"
-              />
-            </svg>
+          <div className="space-y-4">
+            <ResourceRow label="Carreras" value={carreras.length} icon={BookOpen} />
+            <ResourceRow label="Materias" value={materias.length} icon={BookOpen} />
+            <ResourceRow label="Secciones" value={secciones.length} icon={CalendarCheck} />
+            <ResourceRow label="Aulas" value={aulas.length} icon={DoorOpen} />
           </div>
         </Card>
 
-        {/* Sistema */}
         <Card>
           <h3 className="mb-1 text-lg font-semibold text-foreground">Estado del Sistema</h3>
           <p className="mb-4 text-xs text-muted-foreground">Disponibilidad de servicios</p>
           <div className="space-y-4">
             {[
-              { name: 'Motor de horarios', status: 'ok', value: 99 },
+              { name: 'Backend API', status: 'ok', value: 100 },
               { name: 'Base de datos', status: 'ok', value: 100 },
-              { name: 'Autenticación', status: 'ok', value: 98 },
-              { name: 'Servicio de correos', status: 'warn', value: 72 },
+              { name: 'Autenticación (Clerk)', status: 'ok', value: 100 },
+              { name: 'Aulas activas', status: aulas.length ? 'ok' : 'warn', value: aulas.length ? Math.round((aulasActivas / aulas.length) * 100) : 0 },
             ].map((s) => (
               <div key={s.name}>
                 <div className="mb-1 flex items-center justify-between text-xs">
@@ -93,74 +87,77 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Próximas clases */}
         <Card className="lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Próximas Clases</h3>
-              <p className="text-xs text-muted-foreground">Hoy, programadas en el campus</p>
+              <h3 className="text-lg font-semibold text-foreground">Últimas Inscripciones</h3>
+              <p className="text-xs text-muted-foreground">Registros recientes en el sistema</p>
             </div>
-            <Badge variant="info">12 en total</Badge>
+            <Badge variant="info">{inscripciones.length} en total</Badge>
           </div>
           <div className="space-y-3">
-            {[
-              { name: 'Matemáticas Discretas', prof: 'Dr. Pérez', room: 'A-204', time: '09:00', status: 'En curso' },
-              { name: 'Bases de Datos II', prof: 'Ing. Ramírez', room: 'Lab 3', time: '10:30', status: 'Próxima' },
-              { name: 'Algoritmos Avanzados', prof: 'Dr. Mejía', room: 'B-101', time: '13:00', status: 'Próxima' },
-              { name: 'Redes de Computadoras', prof: 'Ing. Castro', room: 'Lab 1', time: '15:30', status: 'Próxima' },
-            ].map((c) => (
-              <div
-                key={c.name}
-                className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-4 py-3 hover:border-status-warning/40"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-status-warning/10 text-status-warning">
-                    <Clock className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {c.prof} · Aula {c.room}
-                    </p>
-                  </div>
+            {inscripciones.slice(0, 5).map((i: { id: string; estado?: string; estudiante?: { nombre: string }; seccion?: { materia?: { nombre: string } }; seccionId?: string; creadoEn: string }) => (
+              <div key={i.id} className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {i.estudiante?.nombre ?? 'Estudiante'} → {i.seccion?.materia?.nombre ?? i.seccionId}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(i.creadoEn).toLocaleString()}
+                  </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-mono text-foreground">{c.time}</p>
-                  <Badge variant={c.status === 'En curso' ? 'success' : 'muted'}>
-                    {c.status}
-                  </Badge>
-                </div>
+                <Badge variant={i.estado === 'CONFIRMADA' ? 'success' : 'muted'}>{i.estado}</Badge>
               </div>
             ))}
+            {inscripciones.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Aún no hay inscripciones registradas.
+              </p>
+            )}
           </div>
         </Card>
 
-        {/* Alertas */}
         <Card>
-          <h3 className="mb-1 text-lg font-semibold text-foreground">Alertas Activas</h3>
+          <h3 className="mb-1 text-lg font-semibold text-foreground">Alertas</h3>
           <p className="mb-4 text-xs text-muted-foreground">Requieren atención</p>
           <div className="space-y-3">
-            <AlertRow
-              variant="critical"
-              icon={AlertTriangle}
-              title="Aula B-305 sobre capacidad"
-              meta="Hace 12 min"
-            />
-            <AlertRow
-              variant="warning"
-              icon={AlertTriangle}
-              title="Conflicto de horario detectado"
-              meta="Materia: Física II"
-            />
-            <AlertRow
-              variant="success"
-              icon={CheckCircle2}
-              title="Optimización completada"
-              meta="Semestre 2026-01"
-            />
+            {carreras.length === 0 && (
+              <AlertRow variant="warning" icon={AlertTriangle} title="No hay carreras" meta="Crea una carrera para empezar" />
+            )}
+            {aulas.length === 0 && (
+              <AlertRow variant="warning" icon={AlertTriangle} title="No hay aulas" meta="Agrega salones desde 'Salones'" />
+            )}
+            {profesores.length === 0 && (
+              <AlertRow variant="warning" icon={AlertTriangle} title="No hay profesores" meta="Registra docentes desde 'Profesores'" />
+            )}
+            {carreras.length > 0 && aulas.length > 0 && profesores.length > 0 && (
+              <AlertRow variant="success" icon={CheckCircle2} title="Sistema operativo" meta="Todos los recursos base están configurados" />
+            )}
           </div>
         </Card>
       </div>
+    </div>
+  )
+}
+
+function ResourceRow({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string
+  value: number
+  icon: React.ComponentType<{ className?: string }>
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-status-warning/10 text-status-warning">
+          <Icon className="h-4 w-4" />
+        </div>
+        <span className="text-sm font-medium text-foreground">{label}</span>
+      </div>
+      <span className="font-mono text-lg font-bold text-foreground">{value}</span>
     </div>
   )
 }

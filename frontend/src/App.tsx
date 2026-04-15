@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, SignInButton, useAuth } from '@clerk/clerk-react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
@@ -14,42 +14,110 @@ import Salones from '@/pages/admin/Salones'
 import Analytics from '@/pages/admin/Analytics'
 import Settings from '@/pages/admin/Settings'
 import Placeholder from '@/pages/admin/Placeholder'
+import { useMe } from '@/hooks/useApiQueries'
+
+// Route guard: requiere sesión + carga el usuario desde backend (auto-aprovisiona si no existe)
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const { isSignedIn, isLoaded } = useAuth()
+  const me = useMe()
+
+  if (!isLoaded) {
+    return <LoadingScreen label="Verificando acceso..." />
+  }
+
+  if (!isSignedIn) {
+    return <Navigate to="/" replace />
+  }
+
+  if (me.isLoading) {
+    return <LoadingScreen label="Cargando tu perfil..." />
+  }
+
+  if (me.isError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-900 text-center p-8">
+        <div>
+          <p className="text-lg text-red-400 mb-2">No se pudo conectar con el servidor</p>
+          <p className="text-sm text-slate-400">
+            Asegúrate de que el backend esté corriendo en http://localhost:3001
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+function LoadingScreen({ label }: { label: string }) {
+  return (
+    <div className="flex h-screen items-center justify-center bg-slate-900">
+      <div className="text-center">
+        <div className="mb-4 inline-block">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-amber-500"></div>
+        </div>
+        <p className="text-slate-400">{label}</p>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   return (
-    <>
-      <SignedOut>
-        <HomeScreen />
-      </SignedOut>
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <>
+            <SignedOut>
+              <HomeScreen />
+            </SignedOut>
+            <SignedIn>
+              <Navigate to="/admin" replace />
+            </SignedIn>
+          </>
+        }
+      />
+      <Route
+        path="/admin/*"
+        element={
+          <PrivateRoute>
+            <AdminRoutes />
+          </PrivateRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
 
-      <SignedIn>
-        <Routes>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route
-              path="reports"
-              element={<Placeholder title="Reportes" description="Reportes exportables del sistema" />}
-            />
-            <Route path="materias" element={<Materias />} />
-            <Route path="profesores" element={<Profesores />} />
-            <Route path="estudiantes" element={<Estudiantes />} />
-            <Route path="horarios" element={<Horarios />} />
-            <Route path="salones" element={<Salones />} />
-            <Route
-              path="inscripciones"
-              element={<Placeholder title="Inscripciones" description="Cola y aprobación de inscripciones" />}
-            />
-            <Route
-              path="usuarios"
-              element={<Placeholder title="Usuarios" description="Gestión de roles y permisos del sistema" />}
-            />
-            <Route path="ajustes" element={<Settings />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/admin" replace />} />
-        </Routes>
-      </SignedIn>
-    </>
+function AdminRoutes() {
+  return (
+    <Routes>
+      <Route element={<AdminLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="analytics" element={<Analytics />} />
+        <Route
+          path="reports"
+          element={<Placeholder title="Reportes" description="Reportes exportables del sistema" />}
+        />
+        <Route path="materias" element={<Materias />} />
+        <Route path="profesores" element={<Profesores />} />
+        <Route path="estudiantes" element={<Estudiantes />} />
+        <Route path="horarios" element={<Horarios />} />
+        <Route path="salones" element={<Salones />} />
+        <Route
+          path="inscripciones"
+          element={<Placeholder title="Inscripciones" description="Cola y aprobación de inscripciones" />}
+        />
+        <Route
+          path="usuarios"
+          element={<Placeholder title="Usuarios" description="Gestión de roles y permisos del sistema" />}
+        />
+        <Route path="ajustes" element={<Settings />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/admin" replace />} />
+    </Routes>
   )
 }
 
@@ -209,7 +277,7 @@ function LoginForm({ role, onBack }: LoginFormProps) {
         </div>
 
         <div className="mb-6">
-          <SignInButton mode="modal">
+          <SignInButton mode="modal" forceRedirectUrl="/admin">
             <Button
               size="lg"
               className="w-full bg-status-warning hover:bg-status-warning/90 text-white font-semibold transition-all duration-200"

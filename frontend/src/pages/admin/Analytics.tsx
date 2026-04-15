@@ -2,6 +2,10 @@ import { BarChart3, TrendingUp, Users, BookOpen } from 'lucide-react'
 import { Card, PageHeader, ProgressBar, StatCard } from '@/components/admin/ui'
 
 export default function Analytics() {
+  const chartData = [40, 55, 62, 48, 70, 85, 78, 90, 72, 95, 110, 88]
+  const months = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+  const maxValue = Math.max(...chartData)
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -23,17 +27,20 @@ export default function Analytics() {
             <p className="text-xs text-muted-foreground">Últimos 12 meses</p>
           </div>
           <div className="flex h-64 items-end gap-2">
-            {[40, 55, 62, 48, 70, 85, 78, 90, 72, 95, 110, 88].map((v, i) => (
-              <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                <div
-                  className="w-full rounded-t bg-gradient-to-t from-status-warning to-amber-400"
-                  style={{ height: `${v}%` }}
-                />
-                <span className="text-[10px] text-muted-foreground">
-                  {['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'][i]}
-                </span>
-              </div>
-            ))}
+            {chartData.map((v, i) => {
+              const heightPct = Math.min(100, (v / maxValue) * 100)
+              return (
+                <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                  <div
+                    className="w-full rounded-t bg-gradient-to-t from-status-warning to-amber-400"
+                    style={{ height: `${heightPct}%` }}
+                  />
+                  <span className="text-[10px] text-muted-foreground">
+                    {months[i]}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </Card>
 

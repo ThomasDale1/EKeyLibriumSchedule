@@ -1,6 +1,21 @@
 import { Request, Response } from 'express'
 import { Prisma } from '../generated/prisma/client'
 import { prisma } from '../db'
+import { z } from 'zod'
+
+// Validation schema for createAula
+const createAulaSchema = z.object({
+  codigo: z.string().min(1, 'Código es requerido'),
+  nombre: z.string().min(1, 'Nombre es requerido'),
+  capacidad: z.coerce.number().int({ message: 'Capacidad debe ser un número entero' }).min(1, 'Capacidad debe ser mayor a 0'),
+  tipo: z.enum(['TEORIA', 'LABORATORIO_COMPUTO', 'LABORATORIO_CIENCIAS', 'AUDITORIO'], { message: 'Tipo de aula no válido' }),
+  edificio: z.string().min(1, 'Edificio es requerido'),
+  piso: z.coerce.number().int({ message: 'Piso debe ser un número entero' }),
+  tieneProyector: z.coerce.boolean(),
+  tieneAC: z.coerce.boolean(),
+  tieneInternet: z.coerce.boolean(),
+  activa: z.coerce.boolean(),
+})
 
 export const getAllAulas = async (req: Request, res: Response) => {
   try {
@@ -33,35 +48,33 @@ export const getAulaById = async (req: Request, res: Response) => {
 
 export const createAula = async (req: Request, res: Response) => {
   try {
-    const {
-      codigo,
-      nombre,
-      capacidad,
-      tipo,
-      edificio,
-      piso,
-      tieneProyector,
-      tieneAC,
-      tieneInternet,
-      activa,
-    } = req.body
+    // Validate input
+    const validationResult = createAulaSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: 'Validación fallida',
+        details: validationResult.error.errors.map((e: z.ZodIssue) => ({
+          field: e.path.join('.'),
+          message: e.message,
+        })),
+      })
+    }
+
+    const validatedData = validationResult.data as Prisma.AulaCreateInput
 
     const aula = await prisma.aula.create({
-      data: {
-        codigo,
-        nombre,
-        capacidad,
-        tipo,
-        edificio,
-        piso,
-        tieneProyector,
-        tieneAC,
-        tieneInternet,
-        activa,
-      },
+      data: validatedData,
     })
     res.status(201).json(aula)
   } catch (error) {
+    // Handle Prisma unique constraint error
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const target = (error.meta?.target as string[] | undefined)?.[0] ?? 'único'
+      return res.status(409).json({
+        error: `Ya existe un aula con este ${target}`,
+        details: { field: target },
+      })
+    }
     console.error('Error al crear aula:', error)
     res.status(500).json({ error: 'Error al crear aula' })
   }
