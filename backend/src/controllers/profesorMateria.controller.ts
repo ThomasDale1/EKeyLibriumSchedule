@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { Prisma } from '../generated/prisma/client'
 import { prisma } from '../db'
 
 export const getAllProfesorMaterias = async (req: Request, res: Response) => {
@@ -57,9 +58,15 @@ export const updateProfesorMateria = async (req: Request, res: Response) => {
       data: { nivelDominio },
     })
     res.json(item)
-  } catch (error) {
-    console.error('Error al actualizar competencia:', error)
-    res.status(500).json({ error: 'Error al actualizar competencia' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Competencia no encontrada' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'El profesor o materia especificado no existe' })
+    } else {
+      console.error('Error al actualizar competencia:', error)
+      res.status(500).json({ error: 'Error al actualizar competencia' })
+    }
   }
 }
 
@@ -68,8 +75,14 @@ export const deleteProfesorMateria = async (req: Request, res: Response) => {
     const id = String(req.params.id)
     await prisma.profesorMateria.delete({ where: { id } })
     res.status(204).send()
-  } catch (error) {
-    console.error('Error al eliminar competencia:', error)
-    res.status(500).json({ error: 'Error al eliminar competencia' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Competencia no encontrada' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'No se puede eliminar la competencia porque tiene registros relacionados' })
+    } else {
+      console.error('Error al eliminar competencia:', error)
+      res.status(500).json({ error: 'Error al eliminar competencia' })
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { Prisma } from '../generated/prisma/client'
 import { prisma } from '../db'
 
 export const getAllInscripciones = async (req: Request, res: Response) => {
@@ -78,9 +79,15 @@ export const updateInscripcion = async (req: Request, res: Response) => {
       data: { estado, posicionEspera, notaFinal },
     })
     res.json(inscripcion)
-  } catch (error) {
-    console.error('Error al actualizar inscripción:', error)
-    res.status(500).json({ error: 'Error al actualizar inscripción' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Inscripción no encontrada' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'El estudiante, sección o ciclo especificado no existe' })
+    } else {
+      console.error('Error al actualizar inscripción:', error)
+      res.status(500).json({ error: 'Error al actualizar inscripción' })
+    }
   }
 }
 
@@ -89,8 +96,14 @@ export const deleteInscripcion = async (req: Request, res: Response) => {
     const id = String(req.params.id)
     await prisma.inscripcion.delete({ where: { id } })
     res.status(204).send()
-  } catch (error) {
-    console.error('Error al eliminar inscripción:', error)
-    res.status(500).json({ error: 'Error al eliminar inscripción' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Inscripción no encontrada' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'No se puede eliminar la inscripción porque tiene registros relacionados' })
+    } else {
+      console.error('Error al eliminar inscripción:', error)
+      res.status(500).json({ error: 'Error al eliminar inscripción' })
+    }
   }
 }

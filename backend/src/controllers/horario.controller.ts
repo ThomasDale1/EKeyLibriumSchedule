@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { Prisma } from '../generated/prisma/client'
 import { prisma } from '../db'
 
 export const getAllHorarios = async (req: Request, res: Response) => {
@@ -58,9 +59,15 @@ export const updateHorario = async (req: Request, res: Response) => {
       data: { dia, horaInicio, horaFin, seccionId, cicloId },
     })
     res.json(horario)
-  } catch (error) {
-    console.error('Error al actualizar horario:', error)
-    res.status(500).json({ error: 'Error al actualizar horario' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Horario no encontrado' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'La sección o ciclo especificado no existe' })
+    } else {
+      console.error('Error al actualizar horario:', error)
+      res.status(500).json({ error: 'Error al actualizar horario' })
+    }
   }
 }
 
@@ -69,8 +76,14 @@ export const deleteHorario = async (req: Request, res: Response) => {
     const id = String(req.params.id)
     await prisma.horario.delete({ where: { id } })
     res.status(204).send()
-  } catch (error) {
-    console.error('Error al eliminar horario:', error)
-    res.status(500).json({ error: 'Error al eliminar horario' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Horario no encontrado' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'No se puede eliminar el horario porque tiene registros relacionados' })
+    } else {
+      console.error('Error al eliminar horario:', error)
+      res.status(500).json({ error: 'Error al eliminar horario' })
+    }
   }
 }

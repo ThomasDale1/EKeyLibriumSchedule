@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { Prisma } from '../generated/prisma/client'
 import { prisma } from '../db'
 
 export const getAllDisponibilidades = async (req: Request, res: Response) => {
@@ -56,9 +57,15 @@ export const updateDisponibilidad = async (req: Request, res: Response) => {
       data: { dia, horaInicio, horaFin, esBloqueo, esDefinidoPorIA },
     })
     res.json(item)
-  } catch (error) {
-    console.error('Error al actualizar disponibilidad:', error)
-    res.status(500).json({ error: 'Error al actualizar disponibilidad' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Disponibilidad no encontrada' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'El profesor asociado no existe' })
+    } else {
+      console.error('Error al actualizar disponibilidad:', error)
+      res.status(500).json({ error: 'Error al actualizar disponibilidad' })
+    }
   }
 }
 
@@ -67,8 +74,14 @@ export const deleteDisponibilidad = async (req: Request, res: Response) => {
     const id = String(req.params.id)
     await prisma.disponibilidadProfesor.delete({ where: { id } })
     res.status(204).send()
-  } catch (error) {
-    console.error('Error al eliminar disponibilidad:', error)
-    res.status(500).json({ error: 'Error al eliminar disponibilidad' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Disponibilidad no encontrada' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'No se puede eliminar la disponibilidad porque tiene registros relacionados' })
+    } else {
+      console.error('Error al eliminar disponibilidad:', error)
+      res.status(500).json({ error: 'Error al eliminar disponibilidad' })
+    }
   }
 }

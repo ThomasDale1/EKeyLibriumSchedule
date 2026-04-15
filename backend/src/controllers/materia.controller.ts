@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { Prisma } from '../generated/prisma/client'
 import { prisma } from '../db'
 
 export const getAllMaterias = async (req: Request, res: Response) => {
@@ -107,9 +108,15 @@ export const updateMateria = async (req: Request, res: Response) => {
       },
     })
     res.json(materia)
-  } catch (error) {
-    console.error('Error al actualizar materia:', error)
-    res.status(500).json({ error: 'Error al actualizar materia' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Materia no encontrada' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'La carrera o un prerequisito especificado no existe' })
+    } else {
+      console.error('Error al actualizar materia:', error)
+      res.status(500).json({ error: 'Error al actualizar materia' })
+    }
   }
 }
 
@@ -118,8 +125,14 @@ export const deleteMateria = async (req: Request, res: Response) => {
     const id = String(req.params.id)
     await prisma.materia.delete({ where: { id } })
     res.status(204).send()
-  } catch (error) {
-    console.error('Error al eliminar materia:', error)
-    res.status(500).json({ error: 'Error al eliminar materia' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Materia no encontrada' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'No se puede eliminar la materia porque tiene secciones, competencias o es prerequisito de otras' })
+    } else {
+      console.error('Error al eliminar materia:', error)
+      res.status(500).json({ error: 'Error al eliminar materia' })
+    }
   }
 }

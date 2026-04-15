@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { Prisma } from '../generated/prisma/client'
 import { prisma } from '../db'
 
 export const getAllCiclos = async (req: Request, res: Response) => {
@@ -34,13 +35,37 @@ export const createCiclo = async (req: Request, res: Response) => {
   try {
     const { nombre, anio, numeroCiclo, fechaInicio, fechaFin, estado, activo } =
       req.body
+
+    // Validation
+    if (!nombre || typeof nombre !== 'string' || nombre.trim() === '') {
+      return res.status(400).json({ error: 'El nombre del ciclo es requerido' })
+    }
+    if (!anio || typeof anio !== 'number' || anio < 1900) {
+      return res.status(400).json({ error: 'El año debe ser un número válido' })
+    }
+    if (!numeroCiclo || typeof numeroCiclo !== 'number' || numeroCiclo < 1) {
+      return res.status(400).json({ error: 'El número de ciclo debe ser positivo' })
+    }
+    if (!fechaInicio) {
+      return res.status(400).json({ error: 'La fecha de inicio es requerida' })
+    }
+    if (!fechaFin) {
+      return res.status(400).json({ error: 'La fecha de fin es requerida' })
+    }
+
+    const inicio = new Date(fechaInicio)
+    const fin = new Date(fechaFin)
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+      return res.status(400).json({ error: 'Las fechas deben ser formatos válidos ISO 8601' })
+    }
+
     const ciclo = await prisma.cicloAcademico.create({
       data: {
-        nombre,
+        nombre: nombre.trim(),
         anio,
         numeroCiclo,
-        fechaInicio: new Date(fechaInicio),
-        fechaFin: new Date(fechaFin),
+        fechaInicio: inicio,
+        fechaFin: fin,
         estado,
         activo,
       },
@@ -70,9 +95,13 @@ export const updateCiclo = async (req: Request, res: Response) => {
       },
     })
     res.json(ciclo)
-  } catch (error) {
-    console.error('Error al actualizar ciclo:', error)
-    res.status(500).json({ error: 'Error al actualizar ciclo' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Ciclo académico no encontrado' })
+    } else {
+      console.error('Error al actualizar ciclo:', error)
+      res.status(500).json({ error: 'Error al actualizar ciclo' })
+    }
   }
 }
 
@@ -81,8 +110,14 @@ export const deleteCiclo = async (req: Request, res: Response) => {
     const id = String(req.params.id)
     await prisma.cicloAcademico.delete({ where: { id } })
     res.status(204).send()
-  } catch (error) {
-    console.error('Error al eliminar ciclo:', error)
-    res.status(500).json({ error: 'Error al eliminar ciclo' })
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ error: 'Ciclo académico no encontrado' })
+    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ error: 'No se puede eliminar el ciclo porque tiene secciones, inscripciones u horarios asociados' })
+    } else {
+      console.error('Error al eliminar ciclo:', error)
+      res.status(500).json({ error: 'Error al eliminar ciclo' })
+    }
   }
 }
