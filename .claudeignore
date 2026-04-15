@@ -1,0 +1,33 @@
+# General
+node_modules/
+.git/
+.env*
+package-lock.json
+
+# Backend especifico
+backend/node_modules/
+backend/prisma/client/  # Si generas el cliente ahí
+backend/dist/
+backend/build/
+
+# Mobile (Expo/React Native) especifico
+frontend/node_modules/
+frontend/.expo/
+frontend/android/
+frontend/ios/
+frontend/dist/
+frontend/.vscode/
+frontend/web/cache/
+frontend/gradle/
+frontend/.gradle/
+frontend/build.gradle
+frontend/settings.gradle
+frontend/gradlew*
+frontend/assets/
+
+# Backend adicional
+backend/prisma/migrations/   # Son archivos de texto gigantes que Claude no necesita leer
+backend/src/generated/       # Todo lo que sea código autogenerado (como tipos de Prisma)
+
+
+VISION.md

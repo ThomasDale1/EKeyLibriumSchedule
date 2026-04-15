@@ -1,0 +1,422 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS — valores fijos permitidos en campos
+// ─────────────────────────────────────────────
+
+enum EstadoCiclo {
+  PLANIFICACION
+  INSCRIPCION
+  EN_CURSO
+  FINALIZADO
+}
+
+enum EstadoEstudiante {
+  ACTIVO
+  INACTIVO
+  GRADUADO
+  SUSPENDIDO
+}
+
+enum TipoContrato {
+  TIEMPO_COMPLETO
+  MEDIO_TIEMPO
+  POR_HORA
+}
+
+enum ModoHorarioProfesor {
+  MANUAL      // El admin define todo
+  AUTOMATICO  // La IA decide todo
+  HIBRIDO     // Mezcla de ambos
+}
+
+enum TipoAula {
+  TEORIA
+  LABORATORIO_COMPUTO
+  LABORATORIO_CIENCIAS
+  AUDITORIO
+}
+
+enum EstadoSeccion {
+  ABIERTA
+  CERRADA
+  CANCELADA
+}
+
+enum EstadoInscripcion {
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+  LISTA_ESPERA
+}
+
+enum DiaSemana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+}
+
+enum TipoParqueo {
+  VEHICULO
+  MOTO
+  BICICLETA
+}
+
+enum RolUsuario {
+  ADMIN
+  PROFESOR
+  ESTUDIANTE
+}
+
+enum TipoAccionAuditoria {
+  CREAR
+  ACTUALIZAR
+  ELIMINAR
+  LOGIN
+  INSCRIBIR
+  DESINSCRIBIR
+}
+
+// ─────────────────────────────────────────────
+// CARRERAS
+// ─────────────────────────────────────────────
+
+model Carrera {
+  id              String    @id @default(cuid())
+  nombre          String
+  codigo          String    @unique
+  descripcion     String?
+  duracionCiclos  Int       // cuántos ciclos dura la carrera
+  activa          Boolean   @default(true)
+  creadoEn        DateTime  @default(now())
+  actualizadoEn   DateTime  @updatedAt
+
+  // Relaciones
+  materias        Materia[]
+  estudiantes     Estudiante[]
+}
+
+// ─────────────────────────────────────────────
+// CICLOS ACADÉMICOS
+// ─────────────────────────────────────────────
+
+model CicloAcademico {
+  id            String        @id @default(cuid())
+  nombre        String        // ej: "Ciclo 01 - 2025"
+  anio          Int
+  numeroCiclo   Int           // 1 o 2
+  fechaInicio   DateTime
+  fechaFin      DateTime
+  estado        EstadoCiclo   @default(PLANIFICACION)
+  activo        Boolean       @default(false) // solo uno activo a la vez
+  creadoEn      DateTime      @default(now())
+  actualizadoEn DateTime      @updatedAt
+
+  // Relaciones
+  secciones     Seccion[]
+  inscripciones Inscripcion[]
+  horarios      Horario[]
+}
+
+// ─────────────────────────────────────────────
+// MATERIAS
+// ─────────────────────────────────────────────
+
+model Materia {
+  id                String    @id @default(cuid())
+  codigo            String    @unique   // ej: "MAT101"
+  nombre            String
+  creditos          Int
+  horasSemanales    Int       // horas de clase por semana
+  tipoAula          TipoAula  @default(TEORIA)
+  descripcion       String?
+  activa            Boolean   @default(true)
+  creadoEn          DateTime  @default(now())
+  actualizadoEn     DateTime  @updatedAt
+
+  // Relación con carrera
+  carreraId         String
+  carrera           Carrera   @relation(fields: [carreraId], references: [id])
+
+  // Prerrequisitos: una materia puede requerir otras
+  // Esto es una relación de la tabla consigo misma
+  prerequisitos     Materia[] @relation("MateriaPrerequisitos")
+  esPrerequisitoDe  Materia[] @relation("MateriaPrerequisitos")
+
+  // Relaciones
+  secciones         Seccion[]
+  competencias      ProfesorMateria[] // qué profesores pueden dar esta materia
+}
+
+// ─────────────────────────────────────────────
+// PROFESORES
+// ─────────────────────────────────────────────
+
+model Profesor {
+  id              String              @id @default(cuid())
+  clerkUserId     String              @unique  // ID de Clerk
+  codigo          String              @unique  // ej: "PROF-001"
+  nombre          String
+  apellido        String
+  email           String              @unique
+  telefono        String?
+  tipoContrato    TipoContrato        @default(POR_HORA)
+  costoHora       Decimal             @db.Decimal(10, 2)
+  maxHorasDia     Int                 @default(8)
+  maxHorasSemana  Int                 @default(40)
+  modoHorario     ModoHorarioProfesor @default(MANUAL)
+  activo          Boolean             @default(true)
+  creadoEn        DateTime            @default(now())
+  actualizadoEn   DateTime            @updatedAt
+
+  // Relaciones
+  disponibilidad  DisponibilidadProfesor[]
+  materias        ProfesorMateria[]        // qué materias puede impartir
+  secciones       Seccion[]                // secciones que imparte
+}
+
+// Qué materias puede dar cada profesor (con nivel de competencia)
+model ProfesorMateria {
+  id          String   @id @default(cuid())
+  profesorId  String
+  materiaId   String
+  nivelDominio Int     @default(3)  // 1-5, usado en optimización
+  creadoEn    DateTime @default(now())
+
+  profesor    Profesor @relation(fields: [profesorId], references: [id])
+  materia     Materia  @relation(fields: [materiaId], references: [id])
+
+  @@unique([profesorId, materiaId]) // un profesor no se repite por materia
+}
+
+// Disponibilidad horaria del profesor (puede haber muchos bloques)
+model DisponibilidadProfesor {
+  id            String    @id @default(cuid())
+  profesorId    String
+  dia           DiaSemana
+  horaInicio    String    // formato "07:00"
+  horaFin       String    // formato "12:00"
+  esBloqueo     Boolean   @default(false) // true = NO disponible en ese bloque
+  esDefinidoPorIA Boolean @default(false) // true = lo generó el motor de IA
+  creadoEn      DateTime  @default(now())
+
+  profesor      Profesor  @relation(fields: [profesorId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// ESTUDIANTES
+// ─────────────────────────────────────────────
+
+model Estudiante {
+  id               String           @id @default(cuid())
+  clerkUserId      String           @unique
+  codigoEstudiante String           @unique  // ej: "2024-001"
+  nombre           String
+  apellido         String
+  email            String           @unique
+  telefono         String?
+  carnetDUI        String?          @unique
+  cicloActual      Int              @default(1)
+  promedioGPA      Decimal?         @db.Decimal(4, 2)
+  estado           EstadoEstudiante @default(ACTIVO)
+  tieneVehiculo    Boolean          @default(false)
+  creadoEn         DateTime         @default(now())
+  actualizadoEn    DateTime         @updatedAt
+
+  // Relaciones
+  carreraId        String
+  carrera          Carrera          @relation(fields: [carreraId], references: [id])
+  inscripciones    Inscripcion[]
+  materiasAprobadas MateriaAprobada[]
+}
+
+// Historial de materias aprobadas (para validar prerrequisitos)
+model MateriaAprobada {
+  id           String     @id @default(cuid())
+  estudianteId String
+  materiaId    String
+  nota         Decimal    @db.Decimal(4, 2)
+  cicloAprobado String    // ej: "2024-01"
+  creadoEn     DateTime   @default(now())
+
+  estudiante   Estudiante @relation(fields: [estudianteId], references: [id])
+
+  @@unique([estudianteId, materiaId])
+}
+
+// ─────────────────────────────────────────────
+// AULAS
+// ─────────────────────────────────────────────
+
+model Aula {
+  id              String    @id @default(cuid())
+  codigo          String    @unique   // ej: "A-101"
+  nombre          String
+  capacidad       Int
+  tipo            TipoAula  @default(TEORIA)
+  edificio        String?
+  piso            Int?
+  tieneProyector  Boolean   @default(false)
+  tieneAC         Boolean   @default(false)
+  tieneInternet   Boolean   @default(false)
+  activa          Boolean   @default(true)
+  creadoEn        DateTime  @default(now())
+  actualizadoEn   DateTime  @updatedAt
+
+  // Relaciones
+  secciones       Seccion[]
+}
+
+// ─────────────────────────────────────────────
+// SECCIONES (la clase concreta en un ciclo)
+// Una materia puede tener varias secciones: MAT101-01, MAT101-02
+// ─────────────────────────────────────────────
+
+model Seccion {
+  id              String        @id @default(cuid())
+  codigo          String        // ej: "MAT101-01"
+  capacidadMax    Int
+  capacidadActual Int           @default(0)
+  estado          EstadoSeccion @default(ABIERTA)
+  creadoEn        DateTime      @default(now())
+  actualizadoEn   DateTime      @updatedAt
+
+  // Relaciones principales
+  materiaId       String
+  materia         Materia       @relation(fields: [materiaId], references: [id])
+
+  profesorId      String
+  profesor        Profesor      @relation(fields: [profesorId], references: [id])
+
+  aulaId          String
+  aula            Aula          @relation(fields: [aulaId], references: [id])
+
+  cicloId         String
+  ciclo           CicloAcademico @relation(fields: [cicloId], references: [id])
+
+  // Relaciones derivadas
+  horarios        Horario[]
+  inscripciones   Inscripcion[]
+
+  @@unique([codigo, cicloId]) // mismo código no se repite en el mismo ciclo
+}
+
+// ─────────────────────────────────────────────
+// HORARIOS (los bloques de tiempo de cada sección)
+// Una sección puede tener varios bloques:
+// ej: Lunes 7-9am y Miércoles 7-9am
+// ─────────────────────────────────────────────
+
+model Horario {
+  id          String         @id @default(cuid())
+  dia         DiaSemana
+  horaInicio  String         // "07:00"
+  horaFin     String         // "09:00"
+  creadoEn    DateTime       @default(now())
+
+  seccionId   String
+  seccion     Seccion        @relation(fields: [seccionId], references: [id])
+
+  cicloId     String
+  ciclo       CicloAcademico @relation(fields: [cicloId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// INSCRIPCIONES
+// ─────────────────────────────────────────────
+
+model Inscripcion {
+  id            String            @id @default(cuid())
+  estado        EstadoInscripcion @default(PENDIENTE)
+  posicionEspera Int?             // si está en lista de espera
+  notaFinal     Decimal?          @db.Decimal(4, 2)
+  creadoEn      DateTime          @default(now())
+  actualizadoEn DateTime          @updatedAt
+
+  estudianteId  String
+  estudiante    Estudiante        @relation(fields: [estudianteId], references: [id])
+
+  seccionId     String
+  seccion       Seccion           @relation(fields: [seccionId], references: [id])
+
+  cicloId       String
+  ciclo         CicloAcademico    @relation(fields: [cicloId], references: [id])
+
+  @@unique([estudianteId, seccionId]) // un estudiante no se inscribe dos veces
+}
+
+// ─────────────────────────────────────────────
+// PARQUEO
+// ─────────────────────────────────────────────
+
+model ZonaParqueo {
+  id              String      @id @default(cuid())
+  codigo          String      @unique
+  nombre          String
+  tipo            TipoParqueo @default(VEHICULO)
+  capacidadTotal  Int
+  activo          Boolean     @default(true)
+  creadoEn        DateTime    @default(now())
+
+  registros       RegistroParqueo[]
+}
+
+// Registro de uso de parqueo por día
+model RegistroParqueo {
+  id            String      @id @default(cuid())
+  fecha         DateTime    @db.Date
+  ocupacionMax  Int         // máxima ocupación registrada ese día
+  ocupacionProm Decimal     @db.Decimal(5, 2)
+  creadoEn      DateTime    @default(now())
+
+  zonaId        String
+  zona          ZonaParqueo @relation(fields: [zonaId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// USUARIOS DEL SISTEMA (espejo de Clerk)
+// ─────────────────────────────────────────────
+
+model Usuario {
+  id          String     @id @default(cuid())
+  clerkUserId String     @unique
+  email       String     @unique
+  nombre      String
+  apellido    String
+  rol         RolUsuario @default(ESTUDIANTE)
+  activo      Boolean    @default(true)
+  creadoEn    DateTime   @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  // Auditoría: qué acciones hizo este usuario
+  acciones    Auditoria[]
+}
+
+// ─────────────────────────────────────────────
+// AUDITORÍA — registro de TODO lo que pasa
+// ─────────────────────────────────────────────
+
+model Auditoria {
+  id           String              @id @default(cuid())
+  accion       TipoAccionAuditoria
+  tabla        String              // en qué tabla ocurrió
+  registroId   String              // ID del registro afectado
+  datosAntes   Json?               // cómo estaba antes
+  datosDespues Json?               // cómo quedó después
+  ip           String?
+  userAgent    String?
+  creadoEn     DateTime            @default(now())
+
+  usuarioId    String?
+  usuario      Usuario?            @relation(fields: [usuarioId], references: [id])
+}
