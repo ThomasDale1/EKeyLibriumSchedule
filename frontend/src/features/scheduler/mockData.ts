@@ -32,7 +32,7 @@ export const MOCK_ROOMS: Room[] = [
 
 export const MOCK_INITIAL_BLOCKS: ScheduleBlock[] = [
   { id: 'b1', subjectId: 's1', sectionLabel: '01', professorId: 'p1', roomId: 'r1', day: 0, startSlot: 2, duration: 4, locked: false, studentsExpected: 28 },
-  { id: 'b2', subjectId: 's2', sectionLabel: '01', professorId: 'p2', roomId: 'r6', day: 0, startSlot: 10, duration: 4, locked: false, studentsExpected: 22 },
+  { id: 'b2', subjectId: 's2', sectionLabel: '01', professorId: 'p2', roomId: 'r6', day: 0, startSlot: 10, duration: 5, locked: false, studentsExpected: 22 },
   { id: 'b3', subjectId: 's3', sectionLabel: '01', professorId: 'p3', roomId: 'r3', day: 1, startSlot: 4, duration: 4, locked: false, studentsExpected: 30 },
   { id: 'b4', subjectId: 's4', sectionLabel: '01', professorId: 'p4', roomId: 'r4', day: 2, startSlot: 0, duration: 4, locked: false, studentsExpected: 24 },
   { id: 'b5', subjectId: 's5', sectionLabel: '01', professorId: 'p5', roomId: 'r7', day: 2, startSlot: 10, duration: 5, locked: false, studentsExpected: 18 },

@@ -57,11 +57,13 @@ export function VersionBar({ onOpenAutoSections, syncStatus, onSaveNow, onDelete
   }
 
   function exportJSON() {
+    if (!active) return
     const content = exportScheduleAsJSON(active, subjects, professors, rooms)
     downloadFile(`horario_${sanitizeFilename(active.name)}.json`, content, 'application/json')
     setExportOpen(false)
   }
   function exportICS() {
+    if (!active) return
     const content = exportScheduleAsICS(active, subjects, professors, rooms)
     downloadFile(`horario_${sanitizeFilename(active.name)}.ics`, content, 'text/calendar')
     setExportOpen(false)

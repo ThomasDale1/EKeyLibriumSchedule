@@ -163,7 +163,8 @@ function DroppableCell({ day, slot }: { day: number; slot: number }) {
     data: { type: 'cell', day, slot } satisfies DropCellData,
   })
   const isHourMark = slot % SLOTS_PER_HOUR === 0
-  const isHalfHour = slot % SLOTS_PER_HOUR === SLOTS_PER_HOUR / 2
+  const halfSlot = Math.floor(SLOTS_PER_HOUR / 2)
+  const isHalfHour = SLOTS_PER_HOUR % 2 === 0 && slot % SLOTS_PER_HOUR === halfSlot
 
   return (
     <div

@@ -13,6 +13,11 @@ export type SyncStatus = 'idle' | 'loading' | 'saving' | 'saved' | 'error' | 'of
 
 const AUTO_SAVE_DELAY_MS = 3000
 
+// Helper to detect if a schedule ID is from remote (server) or local
+function isRemoteId(id: string): boolean {
+  return !id.startsWith('local_')
+}
+
 export function useScheduleSync() {
   const schedules = useScheduleStore((s) => s.schedules)
   const activeSchedule = useActiveSchedule()
@@ -55,35 +60,23 @@ export function useScheduleSync() {
   // ── Auto-save with debounce ──
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevSnapshotRef = useRef<string>('')
+  const savingRef = useRef(false)
+  const pendingSaveRef = useRef(false)
 
-  useEffect(() => {
-    if (!hydrated || !hasRemotePlans) return
-
-    const snapshot = JSON.stringify(schedules.map((s) => ({ id: s.id, name: s.name, blocks: s.blocks, notes: s.notes })))
-    if (snapshot === prevSnapshotRef.current) return
-    prevSnapshotRef.current = snapshot
-
-    if (timerRef.current) clearTimeout(timerRef.current)
-    setStatus('idle')
-
-    timerRef.current = setTimeout(() => {
-      saveAll()
-    }, AUTO_SAVE_DELAY_MS)
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  })
-
+  // ── Define saveAll first so it can be used in useEffect ──
   const saveAll = useCallback(async () => {
-    if (status === 'saving') return
+    if (savingRef.current) {
+      // Mark that a save is pending to be retried after current save completes
+      pendingSaveRef.current = true
+      return
+    }
+    savingRef.current = true
     setStatus('saving')
     try {
       const currentSchedules = useScheduleStore.getState().schedules
       for (const schedule of currentSchedules) {
         const body = scheduleToPlanBody(schedule)
-        const isRemote = schedule.id.startsWith('c') // cuid IDs from backend start with 'c'
-        if (isRemote) {
+        if (isRemoteId(schedule.id)) {
           await updatePlan.mutateAsync({ id: schedule.id, data: body })
         } else {
           const created = await createPlan.mutateAsync({
@@ -105,8 +98,34 @@ export function useScheduleSync() {
       setLastSaved(Date.now())
     } catch {
       setStatus('error')
+    } finally {
+      savingRef.current = false
+      // If changes arrived while saving, retry now
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current = false
+        await saveAll()
+      }
     }
-  }, [status, createPlan, updatePlan])
+  }, [createPlan, updatePlan])
+
+  useEffect(() => {
+    if (!hydrated || !hasRemotePlans) return
+
+    const snapshot = JSON.stringify(schedules.map((s) => ({ id: s.id, name: s.name, blocks: s.blocks, notes: s.notes })))
+    if (snapshot === prevSnapshotRef.current) return
+    prevSnapshotRef.current = snapshot
+
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setStatus('idle')
+
+    timerRef.current = setTimeout(() => {
+      saveAll()
+    }, AUTO_SAVE_DELAY_MS)
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [hydrated, hasRemotePlans, schedules, saveAll])
 
   const saveNow = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -115,8 +134,7 @@ export function useScheduleSync() {
 
   const deletePlan = useCallback(
     async (id: string) => {
-      const isRemote = id.startsWith('c')
-      if (isRemote) {
+      if (isRemoteId(id)) {
         try {
           await deletePlanMut.mutateAsync(id)
         } catch {

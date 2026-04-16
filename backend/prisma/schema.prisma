@@ -163,6 +163,7 @@ model Materia {
   nombre            String
   creditos          Int
   horasSemanales    Int       // horas de clase por semana
+  ciclo             Int       @default(1) // ciclo en la malla curricular (1-based)
   tipoAula          TipoAula  @default(TEORIA)
   descripcion       String?
   activa            Boolean   @default(true)

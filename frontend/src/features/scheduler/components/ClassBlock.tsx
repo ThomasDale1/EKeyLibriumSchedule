@@ -119,9 +119,14 @@ export function ClassBlock({ block, subject, professor, room, conflicts, selecte
           {displayDuration >= 2 && (
             <p className="mt-0.5 truncate text-[11px] font-medium text-foreground">{subject.nombre}</p>
           )}
-          {displayDuration >= 3 && professor && (
+          {displayDuration >= 3 && professor && professor.apellido && professor.apellido.length > 0 && (
             <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
               {professor.nombre} {professor.apellido[0]}.
+            </p>
+          )}
+          {displayDuration >= 3 && professor && (!professor.apellido || professor.apellido.length === 0) && (
+            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+              {professor.nombre}
             </p>
           )}
         </div>

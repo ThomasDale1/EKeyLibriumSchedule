@@ -35,7 +35,7 @@ export function exportScheduleAsJSON(schedule: Schedule, subjects: Subject[], pr
   )
 }
 
-const ICS_DAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+const ICS_DAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
 
 function icsEscape(s: string) {
   return s.replace(/[,;\\]/g, (m) => `\\${m}`).replace(/\n/g, '\\n')

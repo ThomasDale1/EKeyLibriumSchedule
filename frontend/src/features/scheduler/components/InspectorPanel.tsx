@@ -43,7 +43,7 @@ export function InspectorPanel({
     )
   }
 
-  const color = COLOR_STYLES[subject.color]
+  const color = COLOR_STYLES[subject.color] ?? { bg: 'bg-muted/50', text: 'text-foreground' }
   const hasCritical = conflicts?.some((c) =>
     ['time-overlap', 'professor-busy', 'room-busy'].includes(c.kind)
   )

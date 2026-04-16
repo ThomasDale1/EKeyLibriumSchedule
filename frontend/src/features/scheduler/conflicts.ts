@@ -44,9 +44,6 @@ export function detectConflicts(
       const b = blocks[j]
       if (!overlap(a, b)) continue
 
-      add(a.id, { kind: 'time-overlap', message: `Choque con otro bloque en el mismo horario`, otherBlockId: b.id })
-      add(b.id, { kind: 'time-overlap', message: `Choque con otro bloque en el mismo horario`, otherBlockId: a.id })
-
       if (a.professorId && a.professorId === b.professorId) {
         add(a.id, { kind: 'professor-busy', message: 'Profesor asignado a otro bloque al mismo tiempo', otherBlockId: b.id })
         add(b.id, { kind: 'professor-busy', message: 'Profesor asignado a otro bloque al mismo tiempo', otherBlockId: a.id })

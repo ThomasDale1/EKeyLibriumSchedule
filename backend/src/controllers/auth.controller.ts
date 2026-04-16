@@ -89,7 +89,7 @@ export const getMe = async (req: Request, res: Response) => {
           }
         }
       }
-      if (!usuario) throw lastError
+      if (!usuario) throw lastError ?? new Error('Authentication failed: no usuario and no error captured')
     }
 
     res.json(usuario)

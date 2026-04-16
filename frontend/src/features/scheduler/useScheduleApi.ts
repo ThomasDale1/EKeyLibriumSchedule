@@ -73,11 +73,14 @@ export function useDuplicatePlan() {
 // ── Converters: zustand Schedule ↔ API PlanHorario ──
 
 export function planToSchedule(plan: PlanHorario): Schedule {
+  const createdAtMs = new Date(plan.creadoEn).getTime()
+  const updatedAtMs = new Date(plan.actualizadoEn).getTime()
+  
   return {
     id: plan.id,
     name: plan.nombre,
-    createdAt: new Date(plan.creadoEn).getTime(),
-    updatedAt: new Date(plan.actualizadoEn).getTime(),
+    createdAt: Number.isFinite(createdAtMs) ? createdAtMs : Date.now(),
+    updatedAt: Number.isFinite(updatedAtMs) ? updatedAtMs : Date.now(),
     blocks: (plan.bloques as ScheduleBlock[]) ?? [],
     notes: plan.notas ?? '',
   }

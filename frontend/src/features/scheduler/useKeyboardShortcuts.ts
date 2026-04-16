@@ -35,6 +35,7 @@ export function useKeyboardShortcuts() {
       const key = e.key.toLowerCase()
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (block.locked) return
         e.preventDefault()
         removeBlock(block.id)
         return
@@ -55,7 +56,7 @@ export function useKeyboardShortcuts() {
 
       if (e.key === 'ArrowUp') {
         e.preventDefault()
-        if (e.shiftKey) resizeBlock(block.id, block.duration - 1)
+        if (e.shiftKey) resizeBlock(block.id, Math.max(1, block.duration - 1))
         else moveBlock(block.id, block.day, block.startSlot - 1)
         return
       }

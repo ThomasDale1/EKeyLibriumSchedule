@@ -172,7 +172,7 @@ export const useScheduleStore = create<State & Actions>()(
       setCicloFilter: (ciclo) => set({ cicloFilter: ciclo }),
 
       createSchedule: (name, copyFromId) => {
-        const id = nextId('sched-')
+        const id = nextId('local_')
         set((state) => {
           const source = copyFromId
             ? state.schedules.find((s) => s.id === copyFromId)
@@ -236,6 +236,33 @@ export const useScheduleStore = create<State & Actions>()(
       name: STORAGE_KEY,
       version: 1,
       storage: createJSONStorage(() => localStorage),
+      migrate: (state, version) => {
+        if (version === 0 || !state) {
+          return {
+            schedules: [makeDefaultSchedule()],
+            activeScheduleId: DEFAULT_SCHEDULE_ID,
+            cicloFilter: null,
+          } as unknown as State & Actions
+        }
+        // Validate schedules array is not empty
+        const schedules = (state as any).schedules ?? []
+        if (schedules.length === 0) {
+          return {
+            ...state,
+            schedules: [makeDefaultSchedule()],
+            activeScheduleId: DEFAULT_SCHEDULE_ID,
+          } as unknown as State & Actions
+        }
+        // Validate activeScheduleId exists in schedules
+        const activeId = (state as any).activeScheduleId
+        if (!schedules.some((s: Schedule) => s.id === activeId)) {
+          return {
+            ...state,
+            activeScheduleId: schedules[0].id,
+          } as unknown as State & Actions
+        }
+        return state as unknown as State & Actions
+      },
       partialize: (s) => ({
         schedules: s.schedules,
         activeScheduleId: s.activeScheduleId,
@@ -249,13 +276,17 @@ export const useScheduleStore = create<State & Actions>()(
 
 export function selectActiveSchedule(s: State): Schedule {
   const found = s.schedules.find((sch) => sch.id === s.activeScheduleId)
-  return found ?? s.schedules[0]
+  if (found) return found
+  if (s.schedules.length > 0) return s.schedules[0]
+  return makeDefaultSchedule()
 }
 
 export function useActiveSchedule(): Schedule {
   return useScheduleStore((s) => {
     const found = s.schedules.find((sch) => sch.id === s.activeScheduleId)
-    return found ?? s.schedules[0]
+    if (found) return found
+    if (s.schedules.length > 0) return s.schedules[0]
+    return makeDefaultSchedule()
   })
 }
 

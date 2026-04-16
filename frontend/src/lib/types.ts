@@ -28,11 +28,13 @@ export type Materia = {
   nombre: string
   creditos: number
   horasSemanales: number
+  ciclo: number
   tipoAula: TipoAula
   descripcion?: string | null
   activa: boolean
   carreraId: string
   carrera?: Carrera
+  prerequisitos?: { id: string; codigo: string; nombre: string }[]
 }
 
 export type Profesor = {

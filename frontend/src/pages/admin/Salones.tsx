@@ -13,6 +13,7 @@ export default function Salones() {
   const remove = AulasApi.useDelete()
 
   const [open, setOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [form, setForm] = useState({
     codigo: '',
     nombre: '',
@@ -95,22 +96,25 @@ export default function Salones() {
               <div className="mt-3 flex justify-end border-t border-border pt-2">
                 <button
                   onClick={() => {
-                    if (remove.isPending) return
+                    if (remove.isPending && deletingId === a.id) return
                     if (confirm(`¿Eliminar ${a.codigo}?`)) {
+                      setDeletingId(a.id)
                       remove.mutate(a.id, {
                         onError: () => {
                           alert('Error al eliminar el salón. Por favor, intenta de nuevo.')
+                          setDeletingId(null)
                         },
                         onSuccess: () => {
                           alert('Salón eliminado exitosamente')
+                          setDeletingId(null)
                         }
                       })
                     }
                   }}
-                  disabled={remove.isPending}
+                  disabled={remove.isPending && deletingId === a.id}
                   className="text-muted-foreground hover:text-status-critical disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label={`Eliminar ${a.codigo}`}
-                  aria-busy={remove.isPending}
+                  aria-busy={remove.isPending && deletingId === a.id}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

@@ -71,7 +71,7 @@ export default function Dashboard() {
             {[
               { name: 'Aulas activas', status: aulas.length ? 'ok' : 'warn', value: aulas.length ? Math.round((aulasActivas / aulas.length) * 100) : 0 },
               { name: 'Tasa de inscripción', status: tasaInscripcion >= 50 ? 'ok' : 'warn', value: tasaInscripcion },
-              { name: 'Secciones', status: secciones.length ? 'ok' : 'warn', value: secciones.length ? Math.round((secciones.filter((s: { estado?: string }) => s.estado === 'ABIERTA').length / secciones.length) * 100) : 0 },
+              { name: 'Secciones', status: secciones.length ? (Math.round((secciones.filter((s: { estado?: string }) => s.estado === 'ABIERTA').length / secciones.length) * 100) >= 50 ? 'ok' : 'warn') : 'warn', value: secciones.length ? Math.round((secciones.filter((s: { estado?: string }) => s.estado === 'ABIERTA').length / secciones.length) * 100) : 0 },
             ].map((s) => (
               <div key={s.name}>
                 <div className="mb-1 flex items-center justify-between text-xs">

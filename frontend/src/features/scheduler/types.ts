@@ -1,7 +1,5 @@
 import type { TipoAula } from '@/lib/types'
 
-export type SubjectKind = 'TEORIA' | 'LABORATORIO_COMPUTO' | 'LABORATORIO_CIENCIAS' | 'AUDITORIO'
-
 export type Subject = {
   id: string
   codigo: string

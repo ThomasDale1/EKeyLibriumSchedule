@@ -49,7 +49,10 @@ export const createPlan = async (req: Request, res: Response) => {
       },
     })
     res.status(201).json(plan)
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      return res.status(409).json({ error: 'Ciclo no encontrado' })
+    }
     console.error('Error al crear plan de horario:', error)
     res.status(500).json({ error: 'Error al crear plan de horario' })
   }

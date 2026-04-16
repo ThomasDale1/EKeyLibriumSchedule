@@ -55,6 +55,8 @@ export function planAutoSections(
   })
 }
 
+const DAYS_PER_WEEK = 6
+
 export function generateAutoSectionBlocks(
   results: AutoSectionResult[],
   existingBlocks: ScheduleBlock[]
@@ -67,11 +69,10 @@ export function generateAutoSectionBlocks(
 
     for (let i = 0; i < r.sectionCount; i++) {
       const sectionNum = existing + i + 1
-      const dayIdx = i % 6
-      const startSlot = Math.min(
-        TOTAL_SLOTS - DEFAULT_DURATION_SLOTS,
-        Math.floor(i / 6) * (DEFAULT_DURATION_SLOTS + 1)
-      )
+      const dayIdx = i % DAYS_PER_WEEK
+      const maxSlotsPerDay = Math.floor(TOTAL_SLOTS / DEFAULT_DURATION_SLOTS)
+      const slotIndex = Math.floor(i / DAYS_PER_WEEK) % maxSlotsPerDay
+      const startSlot = Math.min(TOTAL_SLOTS - DEFAULT_DURATION_SLOTS, slotIndex * DEFAULT_DURATION_SLOTS)
       newBlocks.push({
         id: nextId(),
         subjectId: r.subjectId,
