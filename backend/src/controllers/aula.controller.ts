@@ -11,10 +11,50 @@ const createAulaSchema = z.object({
   tipo: z.enum(['TEORIA', 'LABORATORIO_COMPUTO', 'LABORATORIO_CIENCIAS', 'AUDITORIO'], { message: 'Tipo de aula no válido' }),
   edificio: z.string().min(1, 'Edificio es requerido'),
   piso: z.coerce.number().int({ message: 'Piso debe ser un número entero' }),
-  tieneProyector: z.coerce.boolean(),
-  tieneAC: z.coerce.boolean(),
-  tieneInternet: z.coerce.boolean(),
-  activa: z.coerce.boolean(),
+  tieneProyector: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const normalized = val.trim().toLowerCase()
+        if (normalized === 'false' || normalized === '0' || normalized === '') return false
+        if (normalized === 'true' || normalized === '1') return true
+      }
+      return val
+    },
+    z.boolean()
+  ),
+  tieneAC: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const normalized = val.trim().toLowerCase()
+        if (normalized === 'false' || normalized === '0' || normalized === '') return false
+        if (normalized === 'true' || normalized === '1') return true
+      }
+      return val
+    },
+    z.boolean()
+  ),
+  tieneInternet: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const normalized = val.trim().toLowerCase()
+        if (normalized === 'false' || normalized === '0' || normalized === '') return false
+        if (normalized === 'true' || normalized === '1') return true
+      }
+      return val
+    },
+    z.boolean()
+  ),
+  activa: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const normalized = val.trim().toLowerCase()
+        if (normalized === 'false' || normalized === '0' || normalized === '') return false
+        if (normalized === 'true' || normalized === '1') return true
+      }
+      return val
+    },
+    z.boolean()
+  ),
 })
 
 export const getAllAulas = async (req: Request, res: Response) => {

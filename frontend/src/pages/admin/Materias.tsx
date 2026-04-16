@@ -107,8 +107,19 @@ export default function Materias() {
                 label: '',
                 render: (r) => (
                   <button
-                    onClick={() => confirm(`¿Eliminar ${r.nombre}?`) && remove.mutate(r.id)}
-                    className="text-muted-foreground hover:text-status-critical"
+                    onClick={async () => {
+                      if (confirm(`¿Eliminar ${r.nombre}?`)) {
+                        try {
+                          await remove.mutateAsync(r.id)
+                          alert('Materia eliminada exitosamente')
+                        } catch (e: unknown) {
+                          const message = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al eliminar materia'
+                          alert(message)
+                        }
+                      }
+                    }}
+                    disabled={remove.isPending}
+                    className="text-muted-foreground hover:text-status-critical disabled:opacity-50"
                     aria-label="Eliminar"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -158,7 +169,7 @@ export default function Materias() {
           </select>
         </Field>
         {carreras.length === 0 && (
-          <p className="text-xs text-status-warning">Crea una carrera primero desde la API.</p>
+          <p className="text-xs text-status-warning">No hay carreras. Crea una nueva carrera en el panel de gestión.</p>
         )}
       </FormModal>
     </div>

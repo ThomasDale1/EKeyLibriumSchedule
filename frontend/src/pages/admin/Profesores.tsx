@@ -115,8 +115,20 @@ export default function Profesores() {
               <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                 <span className="text-xs text-muted-foreground">${p.costoHora}/hr</span>
                 <button
-                  onClick={() => confirm(`¿Eliminar a ${p.nombre}?`) && remove.mutate(p.id)}
-                  className="text-muted-foreground hover:text-status-critical"
+                  onClick={async () => {
+                    if (confirm(`¿Eliminar a ${p.nombre}?`)) {
+                      try {
+                        await remove.mutateAsync(p.id)
+                        alert('Profesor eliminado exitosamente')
+                      } catch (e: unknown) {
+                        const message = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al eliminar profesor'
+                        alert(message)
+                      }
+                    }
+                  }}
+                  disabled={remove.isPending}
+                  className="text-muted-foreground hover:text-status-critical disabled:opacity-50"
+                  aria-label={`Eliminar ${p.nombre}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

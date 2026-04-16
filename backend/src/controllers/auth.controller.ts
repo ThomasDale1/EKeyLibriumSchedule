@@ -25,26 +25,45 @@ export const getMe = async (req: Request, res: Response) => {
       const clerkUser = await clerkClient.users.getUser(userId)
       const email =
         clerkUser.primaryEmailAddress?.emailAddress ??
-        clerkUser.emailAddresses[0]?.emailAddress ??
-        ''
+        clerkUser.emailAddresses[0]?.emailAddress
+      
+      // Handle missing email: explicit error
+      if (!email) {
+        return res.status(400).json({ error: 'Usuario debe tener un email registrado en Clerk' })
+      }
+      
       const nombre = clerkUser.firstName ?? 'Usuario'
       const apellido = clerkUser.lastName ?? '—'
 
-      // Si no hay ningún usuario aún, el primero es admin. También los emails en ADMIN_EMAILS.
-      const total = await prisma.usuario.count()
-      const esAdmin = total === 0 || ADMIN_EMAILS.has(email.toLowerCase())
-      const rol: RolUsuario = esAdmin ? ('ADMIN' as RolUsuario) : ('ESTUDIANTE' as RolUsuario)
+      // Use transaction to atomically check count and create admin
+      try {
+        usuario = await prisma.$transaction(async (tx) => {
+          // Check if any users exist
+          const total = await tx.usuario.count()
+          const esAdmin = total === 0 || ADMIN_EMAILS.has(email.toLowerCase())
+          const rol: RolUsuario = esAdmin ? ('ADMIN' as RolUsuario) : ('ESTUDIANTE' as RolUsuario)
 
-      usuario = await prisma.usuario.create({
-        data: {
-          clerkUserId: userId,
-          email,
-          nombre,
-          apellido,
-          rol,
-          activo: true,
-        },
-      })
+          // Create user (atomic within transaction)
+          return await tx.usuario.create({
+            data: {
+              clerkUserId: userId,
+              email,
+              nombre,
+              apellido,
+              rol,
+              activo: true,
+            },
+          })
+        })
+      } catch (error: unknown) {
+        // Handle P2002 (unique constraint) - user already created by concurrent request
+        if ((error as { code?: string })?.code === 'P2002') {
+          usuario = await prisma.usuario.findUnique({ where: { clerkUserId: userId } })
+          if (!usuario) throw error
+        } else {
+          throw error
+        }
+      }
     }
 
     res.json(usuario)
@@ -56,11 +75,24 @@ export const getMe = async (req: Request, res: Response) => {
 
 export const promoteToAdmin = async (req: Request, res: Response) => {
   try {
-    const { userId } = getAuth(req)
-    if (!userId) return res.status(401).json({ error: 'No autenticado' })
+    const { userId: callerId } = getAuth(req)
+    if (!callerId) return res.status(401).json({ error: 'No autenticado' })
 
+    // Get target userId from request body
+    const { userId: targetUserId } = req.body as { userId?: string }
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'userId en body es requerido' })
+    }
+
+    // Fetch caller info and verify is admin
+    const caller = await prisma.usuario.findUnique({ where: { clerkUserId: callerId } })
+    if (!caller || caller.rol !== 'ADMIN') {
+      return res.status(403).json({ error: 'Solo admins pueden promover usuarios' })
+    }
+
+    // Promote target user to admin
     const usuario = await prisma.usuario.update({
-      where: { clerkUserId: userId },
+      where: { clerkUserId: targetUserId },
       data: { rol: 'ADMIN' as RolUsuario },
     })
     res.json(usuario)

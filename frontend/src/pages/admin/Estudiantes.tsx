@@ -113,8 +113,19 @@ export default function Estudiantes() {
                 label: '',
                 render: (r) => (
                   <button
-                    onClick={() => confirm(`¿Eliminar ${r.nombre}?`) && remove.mutate(r.id)}
-                    className="text-muted-foreground hover:text-status-critical"
+                    onClick={async () => {
+                      if (confirm(`¿Eliminar a ${r.nombre} ${r.apellido}?`)) {
+                        try {
+                          await remove.mutateAsync(r.id)
+                          alert('Estudiante eliminado exitosamente')
+                        } catch (e: unknown) {
+                          const message = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al eliminar estudiante'
+                          alert(message)
+                        }
+                      }
+                    }}
+                    disabled={remove.isPending}
+                    className="text-muted-foreground hover:text-status-critical disabled:opacity-50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -141,7 +152,7 @@ export default function Estudiantes() {
         </div>
         <Field label="Email"><input type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Ciclo actual"><input type="number" className={inputClass} value={form.cicloActual} onChange={(e) => setForm({ ...form, cicloActual: +e.target.value })} required /></Field>
+          <Field label="Ciclo actual"><input type="number" className={inputClass} min="1" value={form.cicloActual} onChange={(e) => setForm({ ...form, cicloActual: Math.max(1, +e.target.value) })} required /></Field>
           <Field label="Carrera">
             <select className={inputClass} value={form.carreraId} onChange={(e) => setForm({ ...form, carreraId: e.target.value })} required>
               <option value="">— Selecciona —</option>

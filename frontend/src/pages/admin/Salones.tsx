@@ -23,6 +23,7 @@ export default function Salones() {
     tieneProyector: true,
     tieneAC: false,
     tieneInternet: true,
+    activa: true,
   })
 
   const activas = aulas.filter((a) => a.activa).length
@@ -32,7 +33,7 @@ export default function Salones() {
     try {
       await create.mutateAsync(form)
       setOpen(false)
-      setForm({ codigo: '', nombre: '', capacidad: 30, tipo: 'TEORIA', edificio: '', piso: 1, tieneProyector: true, tieneAC: false, tieneInternet: true })
+      setForm({ codigo: '', nombre: '', capacidad: 30, tipo: 'TEORIA', edificio: '', piso: 1, tieneProyector: true, tieneAC: false, tieneInternet: true, activa: true })
     } catch (e: unknown) {
       const message = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al crear'
       alert(message)
@@ -114,7 +115,7 @@ export default function Salones() {
         <div className="grid grid-cols-2 gap-3">
           <Field label="Código"><input className={inputClass} value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} required /></Field>
           <Field label="Nombre"><input className={inputClass} value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></Field>
-          <Field label="Capacidad"><input type="number" className={inputClass} value={form.capacidad} onChange={(e) => setForm({ ...form, capacidad: +e.target.value })} required /></Field>
+          <Field label="Capacidad"><input type="number" className={inputClass} min="1" value={form.capacidad} onChange={(e) => setForm({ ...form, capacidad: Math.max(1, +e.target.value) })} required /></Field>
           <Field label="Tipo">
             <select className={inputClass} value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as TipoAula })}>
               {TIPOS.map((t) => <option key={t}>{t}</option>)}
@@ -127,6 +128,7 @@ export default function Salones() {
           <label className="flex items-center gap-2"><input type="checkbox" checked={form.tieneProyector} onChange={(e) => setForm({ ...form, tieneProyector: e.target.checked })} /> Proyector</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={form.tieneAC} onChange={(e) => setForm({ ...form, tieneAC: e.target.checked })} /> A/C</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={form.tieneInternet} onChange={(e) => setForm({ ...form, tieneInternet: e.target.checked })} /> Internet</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.activa} onChange={(e) => setForm({ ...form, activa: e.target.checked })} /> Activa</label>
         </div>
       </FormModal>
     </div>

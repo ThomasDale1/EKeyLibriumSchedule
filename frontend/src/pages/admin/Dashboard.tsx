@@ -69,10 +69,9 @@ export default function Dashboard() {
           <p className="mb-4 text-xs text-muted-foreground">Disponibilidad de servicios</p>
           <div className="space-y-4">
             {[
-              { name: 'Backend API', status: 'ok', value: 100 },
-              { name: 'Base de datos', status: 'ok', value: 100 },
-              { name: 'Autenticación (Clerk)', status: 'ok', value: 100 },
               { name: 'Aulas activas', status: aulas.length ? 'ok' : 'warn', value: aulas.length ? Math.round((aulasActivas / aulas.length) * 100) : 0 },
+              { name: 'Tasa de inscripción', status: tasaInscripcion >= 50 ? 'ok' : 'warn', value: tasaInscripcion },
+              { name: 'Secciones', status: secciones.length ? 'ok' : 'warn', value: secciones.filter((s: { estado?: string }) => s.estado === 'ABIERTA').length },
             ].map((s) => (
               <div key={s.name}>
                 <div className="mb-1 flex items-center justify-between text-xs">
@@ -106,7 +105,7 @@ export default function Dashboard() {
                     {new Date(i.creadoEn).toLocaleString()}
                   </p>
                 </div>
-                <Badge variant={i.estado === 'CONFIRMADA' ? 'success' : 'muted'}>{i.estado}</Badge>
+                <Badge variant={i.estado === 'CONFIRMADA' ? 'success' : 'muted'}>{i.estado ?? 'PENDIENTE'}</Badge>
               </div>
             ))}
             {inscripciones.length === 0 && (

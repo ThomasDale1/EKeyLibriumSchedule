@@ -28,7 +28,7 @@ export default function Analytics() {
           </div>
           <div className="flex h-64 items-end gap-2">
             {chartData.map((v, i) => {
-              const heightPct = Math.min(100, (v / maxValue) * 100)
+              const heightPct = maxValue > 0 ? Math.min(100, (v / maxValue) * 100) : 0
               return (
                 <div key={i} className="flex flex-1 flex-col items-center gap-1">
                   <div

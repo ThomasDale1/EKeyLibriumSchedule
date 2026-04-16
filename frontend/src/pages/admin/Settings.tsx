@@ -155,6 +155,7 @@ export default function Settings() {
 }
 
 function Field({ label, value, onChange }: { label: string; value: string; onChange?: (value: string) => void }) {
+  const isReadOnly = !onChange
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -163,6 +164,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
       <input
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
+        readOnly={isReadOnly}
         className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-status-warning/50 focus:outline-none focus:ring-2 focus:ring-status-warning/20"
       />
     </label>
@@ -180,6 +182,9 @@ function Toggle({
   checked?: boolean
   onChange?: (value: boolean) => void
 }) {
+  const effectiveChecked = checked ?? false
+  const isReadOnly = !onChange
+  
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-border bg-background/40 p-4 hover:border-status-warning/40">
       <div>
@@ -189,8 +194,9 @@ function Toggle({
       <div className="relative inline-flex h-5 w-9 items-center">
         <input 
           type="checkbox" 
-          checked={checked}
+          checked={effectiveChecked}
           onChange={(e) => onChange?.(e.target.checked)}
+          readOnly={isReadOnly}
           className="peer sr-only" 
         />
         <div className="h-5 w-9 shrink-0 rounded-full bg-muted transition-colors peer-checked:bg-status-warning" />

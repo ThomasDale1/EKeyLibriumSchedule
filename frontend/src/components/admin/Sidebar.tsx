@@ -171,7 +171,7 @@ export function Sidebar() {
             <p className="text-[11px] text-muted-foreground">
               {me ? rolLabel[me.rol] ?? me.rol : 'Cargando...'}
             </p>
-            {me && me.rol !== 'ADMIN' && (
+            {me && me.rol !== 'ADMIN' && import.meta.env.MODE === 'development' && (
               <button
                 onClick={() => promote.mutate()}
                 disabled={promote.isPending}

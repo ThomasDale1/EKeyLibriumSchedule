@@ -34,12 +34,14 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (me.isError) {
+    const backendUrl = import.meta.env.REACT_APP_BACKEND_URL || 'http://localhost:3001'
+    const displayUrl = import.meta.env.MODE === 'production' ? 'tu servidor backend' : backendUrl
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900 text-center p-8">
         <div>
           <p className="text-lg text-red-400 mb-2">No se pudo conectar con el servidor</p>
           <p className="text-sm text-slate-400">
-            Asegúrate de que el backend esté corriendo en http://localhost:3001
+            Asegúrate de que {displayUrl} esté disponible y funcionando correctamente
           </p>
         </div>
       </div>
