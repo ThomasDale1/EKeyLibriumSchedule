@@ -5,6 +5,10 @@ import { prisma } from '../db'
 export const getAllProfesores = async (req: Request, res: Response) => {
   try {
     const profesores = await prisma.profesor.findMany({
+      include: {
+        disponibilidad: { orderBy: [{ dia: 'asc' }, { horaInicio: 'asc' }] },
+        materias: { include: { materia: true } },
+      },
       orderBy: { apellido: 'asc' },
     })
     res.json(profesores)

@@ -3,9 +3,11 @@ import { useApi } from '@/lib/api'
 import type {
   Aula,
   Carrera,
+  DisponibilidadProfesor,
   Estudiante,
   Materia,
   Profesor,
+  ProfesorMateria,
   Usuario,
 } from '@/lib/types'
 
@@ -69,6 +71,8 @@ function makeResource<T>(path: string, key: string) {
 export const Carreras = makeResource<Carrera>('/api/carreras', 'carreras')
 export const Materias = makeResource<Materia>('/api/materias', 'materias')
 export const Profesores = makeResource<Profesor>('/api/profesores', 'profesores')
+export const Disponibilidades = makeResource<DisponibilidadProfesor>('/api/disponibilidades', 'disponibilidades')
+export const ProfesorMaterias = makeResource<ProfesorMateria>('/api/profesor-materias', 'profesor-materias')
 export const Estudiantes = makeResource<Estudiante>('/api/estudiantes', 'estudiantes')
 export const Aulas = makeResource<Aula>('/api/aulas', 'aulas')
 export const Secciones = makeResource<any>('/api/secciones', 'secciones')

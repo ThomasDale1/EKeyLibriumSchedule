@@ -2,6 +2,7 @@ export type RolUsuario = 'ADMIN' | 'PROFESOR' | 'ESTUDIANTE'
 export type EstadoEstudiante = 'ACTIVO' | 'INACTIVO' | 'GRADUADO' | 'SUSPENDIDO'
 export type TipoContrato = 'TIEMPO_COMPLETO' | 'MEDIO_TIEMPO' | 'POR_HORA'
 export type TipoAula = 'TEORIA' | 'LABORATORIO_COMPUTO' | 'LABORATORIO_CIENCIAS' | 'AUDITORIO'
+export type DiaSemana = 'LUNES' | 'MARTES' | 'MIERCOLES' | 'JUEVES' | 'VIERNES' | 'SABADO'
 
 export type Usuario = {
   id: string
@@ -37,6 +38,24 @@ export type Materia = {
   prerequisitos?: { id: string; codigo: string; nombre: string }[]
 }
 
+export type DisponibilidadProfesor = {
+  id: string
+  profesorId: string
+  dia: DiaSemana
+  horaInicio: string
+  horaFin: string
+  esBloqueo: boolean
+  esDefinidoPorIA: boolean
+}
+
+export type ProfesorMateria = {
+  id: string
+  profesorId: string
+  materiaId: string
+  nivelDominio: number
+  materia?: Materia
+}
+
 export type Profesor = {
   id: string
   clerkUserId: string
@@ -50,6 +69,8 @@ export type Profesor = {
   maxHorasDia: number
   maxHorasSemana: number
   activo: boolean
+  disponibilidad?: DisponibilidadProfesor[]
+  materias?: ProfesorMateria[]
 }
 
 export type Estudiante = {
