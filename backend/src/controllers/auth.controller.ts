@@ -1,15 +1,21 @@
 import { Request, Response } from 'express'
 import { clerkClient, getAuth } from '@clerk/express'
 import { prisma } from '../db'
+import { Prisma } from '../generated/prisma/client'
 import type { RolUsuario } from '../generated/prisma/enums'
 
-// Emails que se promueven automáticamente a ADMIN al crearse
+// Emails that are automatically promoted to ADMIN when created
 const ADMIN_EMAILS = new Set(
-  (process.env.ADMIN_EMAILS ?? 'dalethomas1212@gmail.com')
+  (process.env.ADMIN_EMAILS ?? '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean)
 )
+
+// Validate that admin emails are configured if they're required
+if (!process.env.ADMIN_EMAILS) {
+  console.warn('Warning: ADMIN_EMAILS environment variable is not set. Only the first user will be promoted to admin.')
+}
 
 export const getMe = async (req: Request, res: Response) => {
   try {
@@ -35,35 +41,55 @@ export const getMe = async (req: Request, res: Response) => {
       const nombre = clerkUser.firstName ?? 'Usuario'
       const apellido = clerkUser.lastName ?? '—'
 
-      // Use transaction to atomically check count and create admin
-      try {
-        usuario = await prisma.$transaction(async (tx) => {
-          // Check if any users exist
-          const total = await tx.usuario.count()
-          const esAdmin = total === 0 || ADMIN_EMAILS.has(email.toLowerCase())
-          const rol: RolUsuario = esAdmin ? ('ADMIN' as RolUsuario) : ('ESTUDIANTE' as RolUsuario)
+      // Use transaction with serializable isolation level to prevent race condition
+      const MAX_RETRIES = 3
+      let lastError: unknown
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          usuario = await prisma.$transaction(
+            async (tx) => {
+              // Check if any users exist
+              const total = await tx.usuario.count()
+              const esAdmin = total === 0 || ADMIN_EMAILS.has(email.toLowerCase())
+              const rol: RolUsuario = esAdmin ? ('ADMIN' as RolUsuario) : ('ESTUDIANTE' as RolUsuario)
 
-          // Create user (atomic within transaction)
-          return await tx.usuario.create({
-            data: {
-              clerkUserId: userId,
-              email,
-              nombre,
-              apellido,
-              rol,
-              activo: true,
+              // Create user (atomic within transaction)
+              return await tx.usuario.create({
+                data: {
+                  clerkUserId: userId,
+                  email,
+                  nombre,
+                  apellido,
+                  rol,
+                  activo: true,
+                },
+              })
             },
-          })
-        })
-      } catch (error: unknown) {
-        // Handle P2002 (unique constraint) - user already created by concurrent request
-        if ((error as { code?: string })?.code === 'P2002') {
-          usuario = await prisma.usuario.findUnique({ where: { clerkUserId: userId } })
-          if (!usuario) throw error
-        } else {
-          throw error
+            {
+              isolationLevel: 'Serializable',
+            }
+          )
+          break // Success, exit retry loop
+        } catch (error: unknown) {
+          lastError = error
+          // Check if it's a serialization failure
+          if ((error as { code?: string })?.code === 'P2034') {
+            // Serialization failure, retry after short delay
+            if (attempt < MAX_RETRIES - 1) {
+              await new Promise((resolve) => setTimeout(resolve, 100 * Math.pow(2, attempt)))
+              continue
+            }
+          } else if ((error as { code?: string })?.code === 'P2002') {
+            // Unique constraint - user already created by concurrent request
+            usuario = await prisma.usuario.findUnique({ where: { clerkUserId: userId } })
+            if (!usuario) throw error
+            break
+          } else {
+            throw error
+          }
         }
       }
+      if (!usuario) throw lastError
     }
 
     res.json(usuario)
@@ -91,11 +117,18 @@ export const promoteToAdmin = async (req: Request, res: Response) => {
     }
 
     // Promote target user to admin
-    const usuario = await prisma.usuario.update({
-      where: { clerkUserId: targetUserId },
-      data: { rol: 'ADMIN' as RolUsuario },
-    })
-    res.json(usuario)
+    try {
+      const usuario = await prisma.usuario.update({
+        where: { clerkUserId: targetUserId },
+        data: { rol: 'ADMIN' as RolUsuario },
+      })
+      res.json(usuario)
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return res.status(404).json({ error: 'Usuario no encontrado' })
+      }
+      throw error
+    }
   } catch (error) {
     console.error('Error en promoteToAdmin:', error)
     res.status(500).json({ error: 'Error al promover usuario' })

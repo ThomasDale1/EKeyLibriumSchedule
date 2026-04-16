@@ -1,5 +1,6 @@
 import { Bell, Globe, Lock, Palette, User } from 'lucide-react'
 import { Card, PageHeader } from '@/components/admin/ui'
+import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
 export default function Settings() {
@@ -14,6 +15,7 @@ export default function Settings() {
     autoOptimize: false,
   })
   const [isDirty, setIsDirty] = useState(false)
+  const [activeTab, setActiveTab] = useState('Perfil')
 
   const handleFieldChange = (field: keyof typeof formState, value: string | boolean) => {
     setFormState((prev) => ({ ...prev, [field]: value }))
@@ -49,7 +51,7 @@ export default function Settings() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <nav className="space-y-1">
           {[
-            { icon: User, label: 'Perfil', active: true },
+            { icon: User, label: 'Perfil' },
             { icon: Bell, label: 'Notificaciones' },
             { icon: Lock, label: 'Seguridad' },
             { icon: Palette, label: 'Apariencia' },
@@ -57,8 +59,9 @@ export default function Settings() {
           ].map((s) => (
             <button
               key={s.label}
+              onClick={() => setActiveTab(s.label)}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                s.active
+                activeTab === s.label
                   ? 'bg-status-warning/10 text-status-warning'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
@@ -186,7 +189,7 @@ function Toggle({
   const isReadOnly = !onChange
   
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-4 rounded-lg border border-border bg-background/40 p-4 hover:border-status-warning/40">
+    <label className={cn("flex items-start justify-between gap-4 rounded-lg border border-border bg-background/40 p-4", !isReadOnly && "cursor-pointer hover:border-status-warning/40")}>
       <div>
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-xs text-muted-foreground">{description}</p>
@@ -196,11 +199,11 @@ function Toggle({
           type="checkbox" 
           checked={effectiveChecked}
           onChange={(e) => onChange?.(e.target.checked)}
-          readOnly={isReadOnly}
+          disabled={isReadOnly}
           className="peer sr-only" 
         />
-        <div className="h-5 w-9 shrink-0 rounded-full bg-muted transition-colors peer-checked:bg-status-warning" />
-        <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
+        <div className="h-5 w-9 shrink-0 rounded-full bg-muted transition-colors peer-checked:bg-status-warning peer-disabled:opacity-50" />
+        <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4 peer-disabled:opacity-50" />
       </div>
     </label>
   )

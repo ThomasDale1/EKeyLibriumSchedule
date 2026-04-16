@@ -15,6 +15,7 @@ export default function Materias() {
 
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [form, setForm] = useState({
     codigo: '',
     nombre: '',
@@ -109,16 +110,19 @@ export default function Materias() {
                   <button
                     onClick={async () => {
                       if (confirm(`¿Eliminar ${r.nombre}?`)) {
+                        setPendingDeleteId(r.id)
                         try {
                           await remove.mutateAsync(r.id)
                           alert('Materia eliminada exitosamente')
                         } catch (e: unknown) {
                           const message = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al eliminar materia'
                           alert(message)
+                        } finally {
+                          setPendingDeleteId(null)
                         }
                       }
                     }}
-                    disabled={remove.isPending}
+                    disabled={pendingDeleteId === r.id}
                     className="text-muted-foreground hover:text-status-critical disabled:opacity-50"
                     aria-label="Eliminar"
                   >
@@ -147,10 +151,10 @@ export default function Materias() {
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Créditos">
-            <input type="number" className={inputClass} value={form.creditos} onChange={(e) => setForm({ ...form, creditos: +e.target.value })} required />
+            <input type="number" min={1} className={inputClass} value={form.creditos} onChange={(e) => setForm({ ...form, creditos: +e.target.value })} required />
           </Field>
           <Field label="Horas semanales">
-            <input type="number" className={inputClass} value={form.horasSemanales} onChange={(e) => setForm({ ...form, horasSemanales: +e.target.value })} required />
+            <input type="number" min={1} className={inputClass} value={form.horasSemanales} onChange={(e) => setForm({ ...form, horasSemanales: +e.target.value })} required />
           </Field>
         </div>
         <Field label="Tipo de aula">

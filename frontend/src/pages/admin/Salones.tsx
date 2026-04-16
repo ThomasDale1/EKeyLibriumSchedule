@@ -94,8 +94,23 @@ export default function Salones() {
               </div>
               <div className="mt-3 flex justify-end border-t border-border pt-2">
                 <button
-                  onClick={() => confirm(`¿Eliminar ${a.codigo}?`) && remove.mutate(a.id)}
-                  className="text-muted-foreground hover:text-status-critical"
+                  onClick={() => {
+                    if (remove.isPending) return
+                    if (confirm(`¿Eliminar ${a.codigo}?`)) {
+                      remove.mutate(a.id, {
+                        onError: () => {
+                          alert('Error al eliminar el salón. Por favor, intenta de nuevo.')
+                        },
+                        onSuccess: () => {
+                          alert('Salón eliminado exitosamente')
+                        }
+                      })
+                    }
+                  }}
+                  disabled={remove.isPending}
+                  className="text-muted-foreground hover:text-status-critical disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label={`Eliminar ${a.codigo}`}
+                  aria-busy={remove.isPending}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

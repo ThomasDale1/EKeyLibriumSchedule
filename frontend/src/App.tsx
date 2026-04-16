@@ -1,5 +1,5 @@
 import { SignedIn, SignedOut, SignInButton, useAuth } from '@clerk/clerk-react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import { CheckCircle2, Users, BookOpen, BarChart3 } from 'lucide-react'
@@ -34,7 +34,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (me.isError) {
-    const backendUrl = import.meta.env.REACT_APP_BACKEND_URL || 'http://localhost:3001'
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
     const displayUrl = import.meta.env.MODE === 'production' ? 'tu servidor backend' : backendUrl
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900 text-center p-8">
@@ -124,7 +124,6 @@ function AdminRoutes() {
 }
 
 function HomeScreen() {
-  const navigate = useNavigate()
   const [selectedRole, setSelectedRole] = useState<'student' | 'professor' | 'admin' | null>(null)
 
   return (
@@ -140,12 +139,6 @@ function HomeScreen() {
               <p className="text-sm text-muted-foreground">Sistema Inteligente de Inscripción y Horarios</p>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/admin')}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Vista previa Admin →
-          </button>
         </div>
       </header>
 

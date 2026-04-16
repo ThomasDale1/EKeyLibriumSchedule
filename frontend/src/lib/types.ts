@@ -44,7 +44,7 @@ export type Profesor = {
   email: string
   telefono?: string | null
   tipoContrato: TipoContrato
-  costoHora: string | number
+  costoHora: number
   maxHorasDia: number
   maxHorasSemana: number
   activo: boolean
@@ -61,6 +61,19 @@ export type Estudiante = {
   estado: EstadoEstudiante
   carreraId: string
   carrera?: Carrera
+}
+
+export type EstadoPlan = 'BORRADOR' | 'PUBLICADO' | 'ARCHIVADO'
+
+export type PlanHorario = {
+  id: string
+  nombre: string
+  estado: EstadoPlan
+  bloques: unknown
+  notas: string | null
+  creadoEn: string
+  actualizadoEn: string
+  cicloId: string | null
 }
 
 export type Aula = {

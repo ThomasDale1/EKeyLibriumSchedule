@@ -66,6 +66,12 @@ enum DiaSemana {
   SABADO
 }
 
+enum EstadoPlan {
+  BORRADOR
+  PUBLICADO
+  ARCHIVADO
+}
+
 enum TipoParqueo {
   VEHICULO
   MOTO
@@ -126,6 +132,25 @@ model CicloAcademico {
   secciones     Seccion[]
   inscripciones Inscripcion[]
   horarios      Horario[]
+  planes        PlanHorario[]
+}
+
+// ─────────────────────────────────────────────
+// PLANES DE HORARIO (borradores del scheduler builder)
+// Almacenan la configuración visual completa como JSON
+// ─────────────────────────────────────────────
+
+model PlanHorario {
+  id            String      @id @default(cuid())
+  nombre        String
+  estado        EstadoPlan  @default(BORRADOR)
+  bloques       Json        // ScheduleBlock[] serializado
+  notas         String?     @db.Text
+  creadoEn      DateTime    @default(now())
+  actualizadoEn DateTime    @updatedAt
+
+  cicloId       String?
+  ciclo         CicloAcademico? @relation(fields: [cicloId], references: [id])
 }
 
 // ─────────────────────────────────────────────

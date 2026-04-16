@@ -120,45 +120,46 @@ export const createAula = async (req: Request, res: Response) => {
   }
 }
 
+// Validation schema for updateAula (partial fields)
+const updateAulaSchema = createAulaSchema.partial()
+
 export const updateAula = async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id)
-    const {
-      codigo,
-      nombre,
-      capacidad,
-      tipo,
-      edificio,
-      piso,
-      tieneProyector,
-      tieneAC,
-      tieneInternet,
-      activa,
-    } = req.body
+
+    // Validate input
+    const validationResult = updateAulaSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: 'Validación fallida',
+        details: validationResult.error.errors.map((e: z.ZodIssue) => ({
+          field: e.path.join('.'),
+          message: e.message,
+        })),
+      })
+    }
+
+    const validatedData = validationResult.data as Prisma.AulaUpdateInput
 
     const aula = await prisma.aula.update({
       where: { id },
-      data: {
-        codigo,
-        nombre,
-        capacidad,
-        tipo,
-        edificio,
-        piso,
-        tieneProyector,
-        tieneAC,
-        tieneInternet,
-        activa,
-      },
+      data: validatedData,
     })
     res.json(aula)
-  } catch (error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      res.status(404).json({ error: 'Aula no encontrada' })
-    } else {
-      console.error('Error al actualizar aula:', error)
-      res.status(500).json({ error: 'Error al actualizar aula' })
+  } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Aula no encontrada' })
+      } else if (error.code === 'P2002') {
+        const target = (error.meta?.target as string[] | undefined)?.[0] ?? 'único'
+        return res.status(409).json({
+          error: `Ya existe un aula con este ${target}`,
+          details: { field: target },
+        })
+      }
     }
+    console.error('Error al actualizar aula:', error)
+    res.status(500).json({ error: 'Error al actualizar aula' })
   }
 }
 
@@ -167,14 +168,15 @@ export const deleteAula = async (req: Request, res: Response) => {
     const id = String(req.params.id)
     await prisma.aula.delete({ where: { id } })
     res.status(204).send()
-  } catch (error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      res.status(404).json({ error: 'Aula no encontrada' })
-    } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-      res.status(409).json({ error: 'No se puede eliminar el aula porque tiene registros relacionados' })
-    } else {
-      console.error('Error al eliminar aula:', error)
-      res.status(500).json({ error: 'Error al eliminar aula' })
+  } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Aula no encontrada' })
+      } else if (error.code === 'P2003') {
+        return res.status(409).json({ error: 'No se puede eliminar el aula porque tiene registros relacionados' })
+      }
     }
+    console.error('Error al eliminar aula:', error)
+    res.status(500).json({ error: 'Error al eliminar aula' })
   }
 }

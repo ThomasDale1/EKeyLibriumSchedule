@@ -149,7 +149,7 @@ export function DataTable<T>({
   columns,
   rows,
   getRowKey,
-  empty = 'Sin datos',
+  empty = 'No data',
 }: {
   columns: { key: keyof T | string; label: string; render?: (row: T) => ReactNode; className?: string }[]
   rows: T[]

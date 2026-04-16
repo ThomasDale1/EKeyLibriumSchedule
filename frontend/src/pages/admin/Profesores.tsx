@@ -90,7 +90,11 @@ export default function Profesores() {
         <div className="py-8 text-center text-red-400">Error al cargar profesores</div>
       ) : filtered.length === 0 ? (
         <Card>
-          <p className="py-8 text-center text-muted-foreground">Aún no hay profesores registrados.</p>
+          <p className="py-8 text-center text-muted-foreground">
+            {profesores.length === 0
+              ? 'Aún no hay profesores registrados.'
+              : 'No hay resultados para la búsqueda.'}
+          </p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

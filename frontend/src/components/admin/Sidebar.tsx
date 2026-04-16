@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useEffect } from 'react'
 import {
   LayoutDashboard,
   BarChart3,
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser, useClerk } from '@clerk/clerk-react'
-import { useMe, usePromoteToAdmin } from '@/hooks/useApiQueries'
+import { useMe, usePromoteToAdmin, Estudiantes, Inscripciones } from '@/hooks/useApiQueries'
 
 type NavItem = {
   to: string
@@ -31,7 +32,15 @@ type NavSection = {
   items: NavItem[]
 }
 
-const sections: NavSection[] = [
+export function Sidebar() {
+  const { user } = useUser()
+  const { signOut } = useClerk()
+  const { data: me } = useMe()
+  const promote = usePromoteToAdmin()
+  const { data: estudiantesList = [] } = Estudiantes.useList()
+  const { data: inscripcionesList = [] } = Inscripciones.useList()
+
+  const sections: NavSection[] = [
   {
     title: 'Overview',
     items: [
@@ -40,22 +49,22 @@ const sections: NavSection[] = [
       { to: '/admin/reports', label: 'Reportes', icon: LineChart },
     ],
   },
-  {
-    title: 'Académico',
-    items: [
-      { to: '/admin/materias', label: 'Materias', icon: BookOpen },
-      { to: '/admin/profesores', label: 'Profesores', icon: GraduationCap },
-      { to: '/admin/estudiantes', label: 'Estudiantes', icon: Users, badge: '1.2k' },
-      { to: '/admin/horarios', label: 'Horarios', icon: CalendarDays },
-    ],
-  },
-  {
-    title: 'Recursos',
-    items: [
-      { to: '/admin/salones', label: 'Salones', icon: DoorOpen },
-      { to: '/admin/inscripciones', label: 'Inscripciones', icon: ClipboardList, badge: '3' },
-    ],
-  },
+    {
+      title: 'Académico',
+      items: [
+        { to: '/admin/materias', label: 'Materias', icon: BookOpen },
+        { to: '/admin/profesores', label: 'Profesores', icon: GraduationCap },
+        { to: '/admin/estudiantes', label: 'Estudiantes', icon: Users, badge: String(estudiantesList.length) },
+        { to: '/admin/horarios', label: 'Horarios', icon: CalendarDays },
+      ],
+    },
+    {
+      title: 'Recursos',
+      items: [
+        { to: '/admin/salones', label: 'Salones', icon: DoorOpen },
+        { to: '/admin/inscripciones', label: 'Inscripciones', icon: ClipboardList, badge: String(inscripcionesList.length) },
+      ],
+    },
   {
     title: 'Sistema',
     items: [
@@ -65,17 +74,11 @@ const sections: NavSection[] = [
   },
 ]
 
-const rolLabel: Record<string, string> = {
-  ADMIN: 'Administrador',
-  PROFESOR: 'Profesor',
-  ESTUDIANTE: 'Estudiante',
-}
-
-export function Sidebar() {
-  const { user } = useUser()
-  const { signOut } = useClerk()
-  const { data: me } = useMe()
-  const promote = usePromoteToAdmin()
+  const rolLabel: Record<string, string> = {
+    ADMIN: 'Administrador',
+    PROFESOR: 'Profesor',
+    ESTUDIANTE: 'Estudiante',
+  }
 
   const handleSignOut = async () => {
     try {
@@ -83,6 +86,7 @@ export function Sidebar() {
       window.location.href = '/'
     } catch (error) {
       console.error('Error al cerrar sesión:', error)
+      alert('Error al cerrar sesión. Por favor, intenta de nuevo.')
     }
   }
 
@@ -196,6 +200,26 @@ export function Sidebar() {
 }
 
 export function Topbar() {
+  const handleNewSchedule = () => {
+    alert('Formulario de nuevo horario - por implementar')
+  }
+
+  const handleOpenCommandPalette = () => {
+    alert('Paleta de comandos - por implementar')
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        handleOpenCommandPalette()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur">
       <div className="relative flex-1 max-w-xl">
@@ -217,12 +241,28 @@ export function Topbar() {
           <circle cx="11" cy="11" r="8" />
           <path d="m21 21-4.3-4.3" />
         </svg>
-        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+        <kbd 
+          role="button" 
+          tabIndex={0}
+          onClick={handleOpenCommandPalette}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              handleOpenCommandPalette()
+            }
+          }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground cursor-pointer hover:bg-muted/80 transition-colors"
+          aria-label="Abrir paleta de comandos (⌘K o Ctrl+K)"
+        >
           ⌘K
         </kbd>
       </div>
 
-      <button className="hidden sm:flex h-10 items-center gap-2 rounded-lg bg-status-warning px-4 text-sm font-semibold text-white hover:bg-status-warning/90 transition-colors">
+      <button 
+        onClick={handleNewSchedule}
+        className="hidden sm:flex h-10 items-center gap-2 rounded-lg bg-status-warning px-4 text-sm font-semibold text-white hover:bg-status-warning/90 transition-colors"
+        title="Crear nuevo horario"
+      >
         <span className="text-lg leading-none">+</span> Nuevo Horario
       </button>
 
@@ -231,7 +271,6 @@ export function Topbar() {
         aria-label="Notificaciones"
       >
         <Bell className="h-4 w-4" aria-hidden="true" />
-        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-status-warning" aria-hidden="true" />
       </button>
     </header>
   )
