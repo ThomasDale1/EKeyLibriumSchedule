@@ -254,6 +254,7 @@ model Estudiante {
   carnetDUI        String?          @unique
   cicloActual      Int              @default(1)
   promedioGPA      Decimal?         @db.Decimal(4, 2)
+  mensualidad      Decimal          @default(0) @db.Decimal(10, 2)
   estado           EstadoEstudiante @default(ACTIVO)
   tieneVehiculo    Boolean          @default(false)
   creadoEn         DateTime         @default(now())

@@ -62,7 +62,22 @@ function formatCost(cost: number, tipo: TipoContrato): string {
 }
 
 function timeToSlot(time: string): number {
-  const [h, m] = time.split(':').map(Number)
+  // Validate time format: must be exactly "HH:MM"
+  if (!time || typeof time !== 'string') {
+    throw new Error(`Invalid time format: expected "HH:MM", got "${time}"`)
+  }
+  const parts = time.split(':')
+  if (parts.length !== 2) {
+    throw new Error(`Invalid time format: "${time}" must contain exactly one colon`)
+  }
+  const h = Number(parts[0])
+  const m = Number(parts[1])
+  if (isNaN(h) || isNaN(m)) {
+    throw new Error(`Invalid time format: "${time}" contains non-numeric parts`)
+  }
+  if (h < 0 || h > 23 || m < 0 || m > 59) {
+    throw new Error(`Invalid time values: hours must be 0-23, minutes must be 0-59, got ${h}:${m}`)
+  }
   return (h - 7) * 2 + (m >= 30 ? 1 : 0)
 }
 
@@ -183,54 +198,121 @@ export default function Profesores() {
 
   // ── Submit (create or update) ──
   const submit = async () => {
-    if (!form.codigo || !form.nombre || !form.apellido || !form.email) return
+    // Validate required fields
+    if (!form.codigo?.trim()) {
+      alert('El código del profesor es requerido.')
+      return
+    }
+    if (!form.nombre?.trim()) {
+      alert('El nombre del profesor es requerido.')
+      return
+    }
+    if (!form.apellido?.trim()) {
+      alert('El apellido del profesor es requerido.')
+      return
+    }
+    if (!form.email?.trim()) {
+      alert('El email del profesor es requerido.')
+      return
+    }
+    // Validate email format
+    if (!validateEmail(form.email.trim())) {
+      alert('El formato del email no es válido. Ingrese un email válido (ej: profesor@example.com).')
+      return
+    }
     setSaving(true)
     try {
       let profesorId: string
+      const deletedDispIds: string[] = []
+      const deletedPMIds: string[] = []
 
       if (editingId) {
         await update.mutateAsync({ id: editingId, data: form })
         profesorId = editingId
 
-        // Sync disponibilidad: delete old, create new
         const existing = profesores.find((p) => p.id === editingId)
-        if (existing?.disponibilidad) {
-          for (const d of existing.disponibilidad) {
-            await deleteDisp.mutateAsync(d.id)
-          }
+        for (const d of existing?.disponibilidad ?? []) {
+          deletedDispIds.push(d.id)
         }
-        // Sync profesor-materias: delete old, create new
-        if (existing?.materias) {
-          for (const pm of existing.materias) {
-            await deletePM.mutateAsync(pm.id)
-          }
+        for (const pm of existing?.materias ?? []) {
+          deletedPMIds.push(pm.id)
         }
       } else {
         const created = await create.mutateAsync({
           ...form,
           clerkUserId: `manual_${Date.now()}`,
-        } as any)
-        profesorId = (created as any).id
+        })
+        profesorId = (created as Profesor).id
       }
 
-      // Create availability blocks
-      for (const block of scheduleBlocks) {
-        await createDisp.mutateAsync({
-          profesorId,
-          dia: block.dia,
-          horaInicio: block.horaInicio,
-          horaFin: block.horaFin,
-          esBloqueo: false,
-        } as any)
+      // Create availability blocks first, before deleting old records.
+      const createdDisp: string[] = []
+      try {
+        for (const block of scheduleBlocks) {
+          const result = await createDisp.mutateAsync({
+            profesorId,
+            dia: block.dia,
+            horaInicio: block.horaInicio,
+            horaFin: block.horaFin,
+            esBloqueo: false,
+          })
+          createdDisp.push((result as DisponibilidadProfesor).id)
+        }
+      } catch (e) {
+        console.error('Error creating disponibilidades:', e)
+        throw new Error('Error al guardar bloques de disponibilidad')
       }
 
-      // Create subject competencies
-      for (const sel of subjectSelections) {
-        await createPM.mutateAsync({
-          profesorId,
-          materiaId: sel.materiaId,
-          nivelDominio: sel.nivelDominio,
-        } as any)
+      // Create subject competencies next.
+      const createdPM: string[] = []
+      try {
+        for (const sel of subjectSelections) {
+          const result = await createPM.mutateAsync({
+            profesorId,
+            materiaId: sel.materiaId,
+            nivelDominio: sel.nivelDominio,
+          })
+          createdPM.push((result as ProfesorMateria).id)
+        }
+      } catch (e) {
+        console.error('Error creating profesor-materias:', e)
+        if (createdDisp.length > 0) {
+          await Promise.allSettled(
+            createdDisp.map((id) => deleteDisp.mutateAsync(id))
+          )
+        }
+        throw new Error('Error al guardar asignaciones de materias')
+      }
+
+      // If editing, delete old records only after new ones have been created.
+      if (editingId) {
+        const deleteOperations = [
+          ...deletedDispIds.map((id) => ({ id, type: 'disponibilidad' as const, promise: deleteDisp.mutateAsync(id) })),
+          ...deletedPMIds.map((id) => ({ id, type: 'profesor-materia' as const, promise: deletePM.mutateAsync(id) })),
+        ]
+
+        const settled = await Promise.allSettled(deleteOperations.map((op) => op.promise))
+        const failed = settled
+          .map((result, index) => ({ result, op: deleteOperations[index] }))
+          .filter(({ result }) => result.status === 'rejected')
+
+        if (failed.length === deleteOperations.length) {
+          console.error('All delete operations failed after successful create:', failed)
+          await Promise.allSettled([
+            ...createdDisp.map((id) => deleteDisp.mutateAsync(id)),
+            ...createdPM.map((id) => deletePM.mutateAsync(id)),
+          ])
+          throw new Error(
+            'Error al sincronizar los cambios; los registros nuevos fueron deshechos para evitar inconsistencias.'
+          )
+        }
+
+        if (failed.length > 0) {
+          console.warn(
+            'Some delete operations failed after successful create; keeping new records and continuing.',
+            failed.map(({ op, result }) => ({ id: op.id, type: op.type, error: (result as PromiseRejectedResult).reason }))
+          )
+        }
       }
 
       // Refresh data
@@ -240,9 +322,15 @@ export default function Profesores() {
 
       setModalOpen(false)
     } catch (e: unknown) {
-      const message =
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        'Error al guardar'
+      let message = 'Error al guardar'
+      if (e instanceof Error) {
+        message = e.message
+      } else {
+        const errorResponse = e as { response?: { data?: { error?: string } } }
+        if (errorResponse?.response?.data?.error) {
+          message = errorResponse.response.data.error
+        }
+      }
       alert(message)
     } finally {
       setSaving(false)
@@ -366,9 +454,14 @@ function ProfesorCard({
   // Calculate total work hours from availability
   const workBlocks = (p.disponibilidad ?? []).filter((d) => !d.esBloqueo)
   const totalWorkHours = workBlocks.reduce((sum, d) => {
-    const start = parseTime(d.horaInicio)
-    const end = parseTime(d.horaFin)
-    return sum + (end - start)
+    try {
+      const start = parseTime(d.horaInicio)
+      const end = parseTime(d.horaFin)
+      return sum + (end - start)
+    } catch (e) {
+      console.warn('Invalid time format in disponibilidad:', d, e)
+      return sum
+    }
   }, 0)
 
   // For now, assigned class hours = 0 (would come from sections in full implementation)
@@ -527,19 +620,24 @@ function MiniSchedule({ disponibilidad }: { disponibilidad: DisponibilidadProfes
             </div>
             <div className="relative h-10 rounded-sm bg-muted/50">
               {blocks.map((b, i) => {
-                const startPct = ((parseTime(b.horaInicio) - 7) / 14) * 100
-                const endPct = ((parseTime(b.horaFin) - 7) / 14) * 100
-                return (
-                  <div
-                    key={i}
-                    className="absolute inset-x-0.5 rounded-sm bg-status-warning/30"
-                    style={{
-                      top: `${startPct}%`,
-                      height: `${Math.max(endPct - startPct, 4)}%`,
-                    }}
-                    title={`${b.horaInicio} – ${b.horaFin}`}
-                  />
-                )
+                try {
+                  const startPct = ((parseTime(b.horaInicio) - 7) / 14) * 100
+                  const endPct = ((parseTime(b.horaFin) - 7) / 14) * 100
+                  return (
+                    <div
+                      key={i}
+                      className="absolute inset-x-0.5 rounded-sm bg-status-warning/30"
+                      style={{
+                        top: `${startPct}%`,
+                        height: `${Math.max(endPct - startPct, 4)}%`,
+                      }}
+                      title={`${b.horaInicio} – ${b.horaFin}`}
+                    />
+                  )
+                } catch (e) {
+                  console.warn('Invalid time format in block:', b, e)
+                  return null
+                }
               })}
             </div>
           </div>
@@ -788,14 +886,21 @@ function ScheduleTab({
   const painted = useMemo(() => {
     const set = new Set<string>()
     for (const b of blocks) {
-      const startSlot = timeToSlot(b.horaInicio)
-      const endSlot = timeToSlot(b.horaFin)
-      for (let s = startSlot; s < endSlot; s++) {
-        set.add(`${b.dia}:${s}`)
+      try {
+        const startSlot = timeToSlot(b.horaInicio)
+        const endSlot = timeToSlot(b.horaFin)
+        for (let s = startSlot; s < endSlot; s++) {
+          set.add(`${b.dia}:${s}`)
+        }
+      } catch (e) {
+        console.warn('Invalid time format in block:', b, e)
       }
     }
     return set
   }, [blocks])
+
+  // Keyboard navigation state: currently focused cell (dia, slot)
+  const [focusedCell, setFocusedCell] = useState<{ dia: DiaSemana; slot: number } | null>(null)
 
   // Drag-paint state
   const painting = useRef<{ active: boolean; adding: boolean }>({ active: false, adding: true })
@@ -856,6 +961,31 @@ function ScheduleTab({
     touchedSlots.current.clear()
   }
 
+  // Keyboard navigation and toggle handler
+  const handleCellKeyDown = (dia: DiaSemana, slot: number, event: React.KeyboardEvent) => {
+    const key = event.key
+    const diaIndex = DIAS.indexOf(dia)
+
+    // Handle arrow key navigation
+    if (key === 'ArrowUp' && slot > 0) {
+      event.preventDefault()
+      setFocusedCell({ dia, slot: slot - 1 })
+    } else if (key === 'ArrowDown' && slot < TOTAL_HALF_HOURS - 1) {
+      event.preventDefault()
+      setFocusedCell({ dia, slot: slot + 1 })
+    } else if (key === 'ArrowLeft' && diaIndex > 0) {
+      event.preventDefault()
+      setFocusedCell({ dia: DIAS[diaIndex - 1], slot })
+    } else if (key === 'ArrowRight' && diaIndex < DIAS.length - 1) {
+      event.preventDefault()
+      setFocusedCell({ dia: DIAS[diaIndex + 1], slot })
+    } else if (key === ' ' || key === 'Enter') {
+      // Toggle selection on Space or Enter
+      event.preventDefault()
+      handlePointerDown(dia, slot)
+    }
+  }
+
   // Compute total painted hours
   const totalHours = painted.size / 2
 
@@ -872,6 +1002,8 @@ function ScheduleTab({
         className="select-none"
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
+        role="grid"
+        aria-label="Horario laboral del profesor - Usa flechas para navegar, Espacio/Enter para seleccionar"
       >
         <div
           className="grid gap-px"
@@ -879,10 +1011,12 @@ function ScheduleTab({
         >
           {/* Header row */}
           <div />
-          {DIAS.map((d) => (
+          {DIAS.map((d, diaIndex) => (
             <div
               key={d}
               className="pb-1 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+              role="columnheader"
+              aria-colindex={diaIndex + 2}
             >
               {DIA_SHORT[d]}
             </div>
@@ -894,24 +1028,42 @@ function ScheduleTab({
             return (
               <div key={slot} className="contents">
                 {/* Time label */}
-                <div className="flex items-center justify-end pr-1.5 text-[9px] text-muted-foreground/60">
+                <div className="flex items-center justify-end pr-1.5 text-[9px] text-muted-foreground/60" role="rowheader" aria-rowindex={slot + 2}>
                   {isHour ? `${Math.floor(slot / 2) + 7}:00` : ''}
                 </div>
                 {/* Day cells */}
-                {DIAS.map((dia) => {
+                {DIAS.map((dia, diaIndex) => {
                   const key = `${dia}:${slot}`
                   const isPainted = painted.has(key)
+                  const isFirstCell = diaIndex === 0 && slot === 0
+                  const isFocused = focusedCell
+                    ? focusedCell.dia === dia && focusedCell.slot === slot
+                    : isFirstCell
                   return (
                     <div
                       key={key}
+                      ref={(el) => {
+                        if (isFocused && el) {
+                          el.focus()
+                        }
+                      }}
+                      tabIndex={isFocused ? 0 : -1}
+                      role="gridcell"
+                      aria-selected={isPainted}
+                      aria-rowindex={slot + 2}
+                      aria-colindex={diaIndex + 2}
                       onPointerDown={() => handlePointerDown(dia, slot)}
                       onPointerEnter={() => handlePointerEnter(dia, slot)}
+                      onKeyDown={(e) => handleCellKeyDown(dia, slot, e)}
+                      onFocus={() => setFocusedCell({ dia, slot })}
                       className={`h-3 cursor-pointer border-b border-r transition-colors ${
                         isHour ? 'border-b-border/30' : 'border-b-border/10'
                       } border-r-border/10 ${
                         isPainted
                           ? 'bg-status-warning/40 hover:bg-status-warning/50'
                           : 'bg-muted/20 hover:bg-muted/40'
+                      } ${
+                        isFocused ? 'ring-2 ring-status-warning ring-offset-0' : ''
                       }`}
                     />
                   )
@@ -1119,6 +1271,27 @@ function SubjectsTab({
 // ── Helpers ──
 
 function parseTime(time: string): number {
-  const [h, m] = time.split(':').map(Number)
+  // Validate time format: must be exactly "HH:MM"
+  if (!time || typeof time !== 'string') {
+    throw new Error(`Invalid time format: expected "HH:MM", got "${time}"`)
+  }
+  const parts = time.split(':')
+  if (parts.length !== 2) {
+    throw new Error(`Invalid time format: "${time}" must contain exactly one colon`)
+  }
+  const h = Number(parts[0])
+  const m = Number(parts[1])
+  if (isNaN(h) || isNaN(m)) {
+    throw new Error(`Invalid time format: "${time}" contains non-numeric parts`)
+  }
+  if (h < 0 || h > 23 || m < 0 || m > 59) {
+    throw new Error(`Invalid time values: hours must be 0-23, minutes must be 0-59, got ${h}:${m}`)
+  }
   return h + m / 60
+}
+
+function validateEmail(email: string): boolean {
+  // Simple email validation regex
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return re.test(email)
 }

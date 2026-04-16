@@ -73,6 +73,14 @@ export type Profesor = {
   materias?: ProfesorMateria[]
 }
 
+export type MateriaAprobada = {
+  id: string
+  estudianteId: string
+  materiaId: string
+  nota: number
+  cicloAprobado: string
+}
+
 export type Estudiante = {
   id: string
   clerkUserId: string
@@ -80,10 +88,15 @@ export type Estudiante = {
   nombre: string
   apellido: string
   email: string
+  telefono?: string | null
   cicloActual: number
+  promedioGPA?: number | null
+  mensualidad: number
   estado: EstadoEstudiante
+  tieneVehiculo: boolean
   carreraId: string
   carrera?: Carrera
+  materiasAprobadas?: MateriaAprobada[]
 }
 
 export type EstadoPlan = 'BORRADOR' | 'PUBLICADO' | 'ARCHIVADO'
