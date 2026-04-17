@@ -11,6 +11,7 @@ const createAulaSchema = z.object({
   tipo: z.enum(['TEORIA', 'LABORATORIO_COMPUTO', 'LABORATORIO_CIENCIAS', 'AUDITORIO'], { message: 'Tipo de aula no válido' }),
   edificio: z.string().min(1, 'Edificio es requerido'),
   piso: z.coerce.number().int({ message: 'Piso debe ser un número entero' }),
+  costoMensual: z.coerce.number().min(0, 'Costo no puede ser negativo').optional().default(0),
   tieneProyector: z.preprocess(
     (val) => {
       if (typeof val === 'string') {

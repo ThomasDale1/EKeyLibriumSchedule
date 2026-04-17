@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   BookOpen,
   ChevronDown,
   Clock,
@@ -10,7 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Badge, Card, PageHeader, StatCard } from '@/components/admin/ui'
+import { Badge, Card, EmptyState, PageHeader, Skeleton, StatCard } from '@/components/admin/ui'
 import { Carreras, Materias as MateriasApi } from '@/hooks/useApiQueries'
 import { FormModal, Field, inputClass } from '@/components/admin/FormModal'
 import type { Carrera, Materia, TipoAula } from '@/lib/types'
@@ -194,17 +195,50 @@ export default function Materias() {
 
       {/* ── Malla grid ── */}
       {isLoading ? (
-        <div className="py-16 text-center text-muted-foreground">Cargando malla curricular...</div>
+        <div className="overflow-x-auto pb-4">
+          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${maxCiclo}, minmax(180px, 1fr))` }}>
+            {Array.from({ length: maxCiclo }, (_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full opacity-60" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : error ? (
-        <div className="py-16 text-center text-red-400">Error al cargar materias</div>
+        <EmptyState
+          icon={AlertTriangle}
+          title="Error al cargar materias"
+          description="Verifica tu conexión e intenta de nuevo"
+        />
       ) : filtered.length === 0 && !search ? (
-        <Card className="py-16 text-center">
-          <Layers className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-          <p className="text-muted-foreground">No hay materias en esta carrera</p>
-          <p className="mt-1 text-xs text-muted-foreground/60">
-            Crea la primera materia para empezar a armar la malla
-          </p>
-        </Card>
+        <EmptyState
+          icon={Layers}
+          title="No hay materias en esta carrera"
+          description="Crea la primera materia para empezar a armar la malla curricular"
+          action={
+            carreras.length > 0 ? (
+              <button
+                onClick={() => {
+                  setForm((f) => ({ ...f, carreraId: selectedCarrera?.id ?? '' }))
+                  setOpen(true)
+                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-status-warning px-4 py-2 text-sm font-semibold text-white hover:bg-status-warning/90"
+              >
+                <Plus className="h-4 w-4" /> Nueva Materia
+              </button>
+            ) : (
+              <button
+                onClick={() => alert('Crea una carrera primero para poder agregar materias.')}
+                className="inline-flex items-center gap-2 rounded-lg bg-status-warning px-4 py-2 text-sm font-semibold text-white hover:bg-status-warning/90"
+              >
+                <Plus className="h-4 w-4" /> Crea una carrera primero
+              </button>
+            )
+          }
+        />
       ) : (
         <div className="overflow-x-auto pb-4">
           <div
@@ -412,7 +446,7 @@ function MateriaCard({
   return (
     <div
       onClick={onToggle}
-      className={`group relative cursor-pointer rounded-lg border transition-all ${colors.border} ${colors.bg} hover:brightness-110 ${
+      className={`group relative cursor-pointer rounded-lg border transition-all duration-200 ${colors.border} ${colors.bg} hover:shadow-md hover:scale-[1.02] ${
         expanded ? 'ring-1 ring-current/20' : ''
       } ${!m.activa ? 'opacity-50' : ''}`}
     >

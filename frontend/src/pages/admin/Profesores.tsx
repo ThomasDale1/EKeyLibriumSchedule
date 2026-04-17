@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   BookOpen,
   Calendar,
   ChevronDown,
@@ -14,7 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Badge, Card, PageHeader, ProgressBar, StatCard } from '@/components/admin/ui'
+import { Badge, Card, EmptyState, PageHeader, ProgressBar, SkeletonCard, SkeletonStatCard, StatCard } from '@/components/admin/ui'
 import {
   Profesores as ProfesoresApi,
   Disponibilidades,
@@ -422,12 +423,18 @@ export default function Profesores() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Total" value={String(profesores.length)} icon={GraduationCap} accent="warning" />
-        <StatCard label="Activos" value={String(activos)} icon={GraduationCap} accent="success" />
-        <StatCard label="Inactivos" value={String(profesores.length - activos)} icon={GraduationCap} accent="info" />
-        <StatCard label="Tiempo completo" value={String(tiempoCompleto)} icon={GraduationCap} accent="critical" />
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => <SkeletonStatCard key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label="Total" value={String(profesores.length)} icon={GraduationCap} accent="warning" />
+          <StatCard label="Activos" value={String(activos)} icon={GraduationCap} accent="success" />
+          <StatCard label="Inactivos" value={String(profesores.length - activos)} icon={GraduationCap} accent="info" />
+          <StatCard label="Tiempo completo" value={String(tiempoCompleto)} icon={GraduationCap} accent="critical" />
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -442,15 +449,29 @@ export default function Profesores() {
 
       {/* Cards grid */}
       {isLoading ? (
-        <div className="py-12 text-center text-muted-foreground">Cargando profesores...</div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {Array.from({ length: 4 }, (_, i) => <SkeletonCard key={i} className="h-48" />)}
+        </div>
       ) : error ? (
-        <div className="py-12 text-center text-red-400">Error al cargar profesores</div>
+        <EmptyState
+          icon={AlertTriangle}
+          title="Error al cargar profesores"
+          description="Verifica tu conexión e intenta de nuevo"
+        />
       ) : filtered.length === 0 ? (
-        <Card>
-          <p className="py-10 text-center text-muted-foreground">
-            {profesores.length === 0 ? 'Aún no hay profesores registrados.' : 'No hay resultados.'}
-          </p>
-        </Card>
+        <EmptyState
+          icon={GraduationCap}
+          title={profesores.length === 0 ? 'Aún no hay profesores registrados' : 'No hay resultados para la búsqueda'}
+          description={profesores.length === 0 ? 'Agrega el primer profesor para gestionar la carga docente' : 'Intenta buscar con otros términos'}
+          action={profesores.length === 0 ? (
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 rounded-lg bg-status-warning px-4 py-2 text-sm font-semibold text-white hover:bg-status-warning/90"
+            >
+              <Plus className="h-4 w-4" /> Nuevo Profesor
+            </button>
+          ) : undefined}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {filtered.map((p) => (
@@ -519,10 +540,10 @@ function ProfesorCard({
   const hoursPct = p.maxHorasSemana > 0 ? (assignedHours / p.maxHorasSemana) * 100 : 0
 
   return (
-    <Card className="transition-colors hover:border-border/80">
+    <Card className="group transition-all duration-200 hover:border-status-warning/30 hover:shadow-lg hover:shadow-status-warning/5">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-status-warning to-amber-500 text-sm font-bold text-white">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-status-warning to-amber-500 text-sm font-bold text-white transition-transform duration-200 group-hover:scale-105">
           {(p.nombre?.[0] ?? '?') + (p.apellido?.[0] ?? '')}
         </div>
         <div className="min-w-0 flex-1">

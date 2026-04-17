@@ -293,6 +293,7 @@ model Aula {
   tipo            TipoAula  @default(TEORIA)
   edificio        String?
   piso            Int?
+  costoMensual    Decimal   @default(0) @db.Decimal(10, 2)
   tieneProyector  Boolean   @default(false)
   tieneAC         Boolean   @default(false)
   tieneInternet   Boolean   @default(false)

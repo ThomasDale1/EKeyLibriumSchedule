@@ -1,6 +1,96 @@
 import { cn } from '@/lib/utils'
 import type { ComponentType, ReactNode } from 'react'
 
+// ── Skeleton (shimmer loading placeholder) ──
+
+export function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'animate-pulse rounded-lg bg-muted/60',
+        className
+      )}
+    />
+  )
+}
+
+export function SkeletonCard({ className }: { className?: string }) {
+  return (
+    <div className={cn('rounded-xl border border-border bg-card p-5', className)}>
+      <div className="flex items-start justify-between">
+        <div className="space-y-2 flex-1">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+        <Skeleton className="h-10 w-10 rounded-lg" />
+      </div>
+      <div className="mt-4 space-y-2">
+        <Skeleton className="h-2 w-full" />
+        <Skeleton className="h-2 w-3/4" />
+      </div>
+    </div>
+  )
+}
+
+export function SkeletonStatCard() {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 flex items-start justify-between gap-4">
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-7 w-16" />
+      </div>
+      <Skeleton className="h-10 w-10 rounded-lg" />
+    </div>
+  )
+}
+
+export function SkeletonTable({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="border-b border-border px-5 py-3 flex gap-6">
+        {Array.from({ length: cols }, (_, i) => (
+          <Skeleton key={i} className="h-3 flex-1" />
+        ))}
+      </div>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="border-b border-border/40 px-5 py-3.5 flex gap-6 last:border-0">
+          {Array.from({ length: cols }, (_, j) => (
+            <Skeleton key={j} className="h-4 flex-1" />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Empty State ──
+
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: ComponentType<{ className?: string }>
+  title: string
+  description?: string
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/50 py-16 text-center">
+      <div className="mb-4 rounded-2xl bg-muted/40 p-4">
+        <Icon className="h-8 w-8 text-muted-foreground/40" />
+      </div>
+      <p className="text-sm font-medium text-muted-foreground">{title}</p>
+      {description && (
+        <p className="mt-1 max-w-xs text-xs text-muted-foreground/60">{description}</p>
+      )}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  )
+}
+
 export function PageHeader({
   title,
   description,

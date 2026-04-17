@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -15,7 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Badge, Card, PageHeader, StatCard } from '@/components/admin/ui'
+import { Badge, Card, EmptyState, PageHeader, SkeletonStatCard, SkeletonTable, StatCard } from '@/components/admin/ui'
 import {
   Carreras,
   Estudiantes as EstudiantesApi,
@@ -228,17 +229,23 @@ export default function Estudiantes() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Activos" value={String(stats.activos)} icon={Users} accent="success" />
-        <StatCard label="Graduados" value={String(stats.graduados)} icon={GraduationCap} accent="info" />
-        <StatCard
-          label="Ingreso mensual"
-          value={`$${stats.ingresoMensual.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          icon={DollarSign}
-          accent="warning"
-        />
-        <StatCard label="Con transporte" value={String(stats.conVehiculo)} icon={Car} accent="critical" />
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => <SkeletonStatCard key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label="Activos" value={String(stats.activos)} icon={Users} accent="success" />
+          <StatCard label="Graduados" value={String(stats.graduados)} icon={GraduationCap} accent="info" />
+          <StatCard
+            label="Ingreso mensual"
+            value={`$${stats.ingresoMensual.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            icon={DollarSign}
+            accent="warning"
+          />
+          <StatCard label="Con transporte" value={String(stats.conVehiculo)} icon={Car} accent="critical" />
+        </div>
+      )}
 
       {/* Toolbar */}
       <Card>
@@ -344,9 +351,13 @@ export default function Estudiantes() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="py-12 text-center text-muted-foreground">Cargando estudiantes...</div>
+        <SkeletonTable rows={6} cols={9} />
       ) : error ? (
-        <div className="py-12 text-center text-red-400">Error al cargar estudiantes</div>
+        <EmptyState
+          icon={AlertTriangle}
+          title="Error al cargar estudiantes"
+          description="Verifica tu conexión e intenta de nuevo"
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card">
           <div className="overflow-x-auto">
@@ -367,8 +378,18 @@ export default function Estudiantes() {
               <tbody>
                 {processed.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-5 py-10 text-center text-muted-foreground">
-                      {estudiantes.length === 0 ? 'No hay estudiantes registrados' : 'Sin resultados para los filtros aplicados'}
+                    <td colSpan={9} className="px-5 py-14 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="rounded-2xl bg-muted/40 p-3">
+                          <Users className="h-6 w-6 text-muted-foreground/40" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {estudiantes.length === 0 ? 'No hay estudiantes registrados' : 'Sin resultados para los filtros aplicados'}
+                        </p>
+                        {estudiantes.length === 0 && (
+                          <p className="text-xs text-muted-foreground/60">Agrega el primer estudiante para empezar</p>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (

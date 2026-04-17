@@ -120,6 +120,7 @@ export type Aula = {
   tipo: TipoAula
   edificio?: string | null
   piso?: number | null
+  costoMensual: number
   tieneProyector: boolean
   tieneAC: boolean
   tieneInternet: boolean
