@@ -13,7 +13,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge, Card, PageHeader, ProgressBar, StatCard } from '@/components/admin/ui'
 import {
   Profesores as ProfesoresApi,
@@ -226,15 +226,20 @@ export default function Profesores() {
       const deletedDispIds: string[] = []
       const deletedPMIds: string[] = []
 
-      if (editingId) {
-        await update.mutateAsync({ id: editingId, data: form })
-        profesorId = editingId
+      let existingProfesor: Profesor | undefined
+      let oldDispRecords: DisponibilidadProfesor[] = []
+      let oldPMRecords: ProfesorMateria[] = []
 
-        const existing = profesores.find((p) => p.id === editingId)
-        for (const d of existing?.disponibilidad ?? []) {
+      if (editingId) {
+        existingProfesor = profesores.find((p) => p.id === editingId)
+        profesorId = editingId
+        oldDispRecords = existingProfesor?.disponibilidad ?? []
+        oldPMRecords = existingProfesor?.materias ?? []
+
+        for (const d of oldDispRecords) {
           deletedDispIds.push(d.id)
         }
-        for (const pm of existing?.materias ?? []) {
+        for (const pm of oldPMRecords) {
           deletedPMIds.push(pm.id)
         }
       } else {
@@ -285,14 +290,15 @@ export default function Profesores() {
       }
 
       // If editing, delete old records only after new ones have been created.
+      let deleteSettled: Array<PromiseSettledResult<unknown>> = []
       if (editingId) {
         const deleteOperations = [
-          ...deletedDispIds.map((id) => ({ id, type: 'disponibilidad' as const, promise: deleteDisp.mutateAsync(id) })),
-          ...deletedPMIds.map((id) => ({ id, type: 'profesor-materia' as const, promise: deletePM.mutateAsync(id) })),
+          ...deletedDispIds.map((id) => ({ id, type: 'disponibilidad' as const, recordType: 'disponibilidad', promise: deleteDisp.mutateAsync(id) })),
+          ...deletedPMIds.map((id) => ({ id, type: 'profesor-materia' as const, recordType: 'materia', promise: deletePM.mutateAsync(id) })),
         ]
 
-        const settled = await Promise.allSettled(deleteOperations.map((op) => op.promise))
-        const failed = settled
+        deleteSettled = await Promise.allSettled(deleteOperations.map((op) => op.promise))
+        const failed = deleteSettled
           .map((result, index) => ({ result, op: deleteOperations[index] }))
           .filter(({ result }) => result.status === 'rejected')
 
@@ -312,6 +318,50 @@ export default function Profesores() {
             'Some delete operations failed after successful create; keeping new records and continuing.',
             failed.map(({ op, result }) => ({ id: op.id, type: op.type, error: (result as PromiseRejectedResult).reason }))
           )
+        }
+      }
+
+      if (editingId) {
+        try {
+          await update.mutateAsync({ id: editingId, data: form })
+        } catch (e) {
+          console.error('Error updating profesor after related record changes:', e)
+          await Promise.allSettled([
+            ...createdDisp.map((id) => deleteDisp.mutateAsync(id)),
+            ...createdPM.map((id) => deletePM.mutateAsync(id)),
+          ])
+
+          const deletedDispIdsSucceeded = editingId
+            ? deletedDispIds.filter((_, index) => deleteSettled[index]?.status === 'fulfilled')
+            : []
+          const deletedPMIdsSucceeded = editingId
+            ? deletedPMIds.filter((_, index) => deleteSettled[deletedDispIds.length + index]?.status === 'fulfilled')
+            : []
+
+          await Promise.allSettled([
+            ...oldDispRecords
+              .filter((record) => deletedDispIdsSucceeded.includes(record.id))
+              .map((record) =>
+                createDisp.mutateAsync({
+                  profesorId,
+                  dia: record.dia,
+                  horaInicio: record.horaInicio,
+                  horaFin: record.horaFin,
+                  esBloqueo: record.esBloqueo,
+                })
+              ),
+            ...oldPMRecords
+              .filter((record) => deletedPMIdsSucceeded.includes(record.id))
+              .map((record) =>
+                createPM.mutateAsync({
+                  profesorId,
+                  materiaId: record.materiaId,
+                  nivelDominio: record.nivelDominio,
+                })
+              ),
+          ])
+
+          throw e
         }
       }
 
@@ -901,6 +951,15 @@ function ScheduleTab({
 
   // Keyboard navigation state: currently focused cell (dia, slot)
   const [focusedCell, setFocusedCell] = useState<{ dia: DiaSemana; slot: number } | null>(null)
+  const cellRefs = useRef<Map<string, HTMLDivElement | null>>(new Map())
+
+  useEffect(() => {
+    const focusedKey = focusedCell ? `${focusedCell.dia}:${focusedCell.slot}` : 'LUNES:0'
+    const cell = cellRefs.current.get(focusedKey)
+    if (cell) {
+      cell.focus()
+    }
+  }, [focusedCell])
 
   // Drag-paint state
   const painting = useRef<{ active: boolean; adding: boolean }>({ active: false, adding: true })
@@ -1043,8 +1102,10 @@ function ScheduleTab({
                     <div
                       key={key}
                       ref={(el) => {
-                        if (isFocused && el) {
-                          el.focus()
+                        if (el) {
+                          cellRefs.current.set(key, el)
+                        } else {
+                          cellRefs.current.delete(key)
                         }
                       }}
                       tabIndex={isFocused ? 0 : -1}
