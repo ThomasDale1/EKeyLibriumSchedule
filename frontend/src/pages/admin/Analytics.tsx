@@ -19,7 +19,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useId, useMemo, useState, type ReactNode } from 'react'
 import { Card, PageHeader, ProgressBar, SkeletonCard, SkeletonStatCard } from '@/components/admin/ui'
 import {
   Carreras,
@@ -521,10 +521,13 @@ function ExpandableCard({
   className?: string
 }) {
   const [expanded, setExpanded] = useState(false)
+  const panelId = useId()
   return (
     <Card className={`transition-all duration-200 hover:border-status-warning/20 hover:shadow-lg hover:shadow-status-warning/5 ${className}`}>
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-controls={expandedContent ? panelId : undefined}
         className="mb-3 flex w-full items-center justify-between text-left"
       >
         <div>
@@ -541,7 +544,7 @@ function ExpandableCard({
         )}
       </button>
       {children}
-      {expanded && expandedContent}
+      {expanded && expandedContent ? <div id={panelId}>{expandedContent}</div> : null}
     </Card>
   )
 }
@@ -671,9 +674,10 @@ function computeKpis(
   // Professor cost estimate (monthly): hourly * maxHorasSemana * 4.33 weeks, or fixed for full/half
   const costoDocente = profesores.reduce((s, p) => {
     if (p.tipoContrato === 'POR_HORA') {
-      return s + Number(p.costoHora ?? 0) * Number(p.maxHorasSemana ?? 0) * 4.33
+      return s + (p.costoHora ?? 0) * (p.maxHorasSemana ?? 0) * 4.33
     }
-    return s + Number((p as any).costoMensual ?? p.costoHora ?? 0)
+    // Fallback: use costoHora as a base if monthly cost is not defined in the type
+    return s + (p.costoHora ?? 0)
   }, 0)
 
   const balanceMensual = ingresoEstudiantes - costoAulas - costoDocente

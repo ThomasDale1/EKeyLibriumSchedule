@@ -77,3 +77,31 @@ export type DropCellData = {
   day: number
   slot: number
 }
+
+// ── Ghost Schedule Types ──
+
+export type GhostAction = 'move' | 'add' | 'remove' | 'resize' | 'reassign-professor' | 'reassign-room'
+
+export type GhostBlock = ScheduleBlock & {
+  ghost: true
+  action: GhostAction
+  originalBlockId?: string
+}
+
+export type GhostStep = {
+  order: number
+  instruction: string
+  detail: string
+  ghostBlockIds: string[]
+  existingBlockIds: string[]
+}
+
+export type GhostSuggestion = {
+  id: string
+  title: string
+  description: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  category: string
+  steps: GhostStep[]
+  ghostBlocks: GhostBlock[]
+}

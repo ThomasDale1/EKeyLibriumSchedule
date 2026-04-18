@@ -31,7 +31,7 @@ export function InspectorPanel({
 }: Props) {
   if (!block || !subject) {
     return (
-      <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-6 text-center">
+      <div className="flex h-full flex-col items-center justify-center p-6 text-center">
         <div className="mb-3 rounded-full bg-muted p-3">
           <UserIcon className="h-5 w-5 text-muted-foreground" />
         </div>
@@ -49,7 +49,7 @@ export function InspectorPanel({
   )
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card">
+    <div className="flex h-full flex-col overflow-hidden">
       <div className={cn('border-b border-border p-4', color.bg)}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">

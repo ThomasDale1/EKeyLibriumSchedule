@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Professor, Room, ScheduleBlock, Subject } from './types'
-import { MOCK_INITIAL_BLOCKS, MOCK_PROFESSORS, MOCK_ROOMS, MOCK_SUBJECTS } from './mockData'
 import { DEFAULT_DURATION_SLOTS, MIN_DURATION_SLOTS, TOTAL_SLOTS } from './constants'
 
 let uidCounter = 1000
@@ -38,6 +37,10 @@ type Actions = {
   removeBlock: (id: string) => void
   setCicloFilter: (ciclo: number | null) => void
 
+  setSubjects: (subjects: Subject[]) => void
+  setProfessors: (professors: Professor[]) => void
+  setRooms: (rooms: Room[]) => void
+
   // Schedule management
   createSchedule: (name?: string, copyFromId?: string) => string
   renameSchedule: (id: string, name: string) => void
@@ -54,7 +57,7 @@ function makeDefaultSchedule(): Schedule {
     name: 'v1 · Plan inicial',
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    blocks: MOCK_INITIAL_BLOCKS,
+    blocks: [],
     notes: '',
   }
 }
@@ -64,9 +67,9 @@ const STORAGE_KEY = 'ekeylibrium:scheduler:v1'
 export const useScheduleStore = create<State & Actions>()(
   persist(
     (set, get) => ({
-      subjects: MOCK_SUBJECTS,
-      professors: MOCK_PROFESSORS,
-      rooms: MOCK_ROOMS,
+      subjects: [],
+      professors: [],
+      rooms: [],
       schedules: [makeDefaultSchedule()],
       activeScheduleId: DEFAULT_SCHEDULE_ID,
       selectedBlockId: null,
@@ -170,6 +173,10 @@ export const useScheduleStore = create<State & Actions>()(
         })),
 
       setCicloFilter: (ciclo) => set({ cicloFilter: ciclo }),
+
+      setSubjects: (subjects) => set({ subjects }),
+      setProfessors: (professors) => set({ professors }),
+      setRooms: (rooms) => set({ rooms }),
 
       createSchedule: (name, copyFromId) => {
         const id = nextId('local_')

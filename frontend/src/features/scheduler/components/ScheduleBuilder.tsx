@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -11,14 +11,20 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { AlertTriangle, CheckCircle2, Keyboard, Trash2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Keyboard, Loader2, Settings2, Shield, Trash2, User as UserIcon } from 'lucide-react'
 import { useScheduleStore, useActiveSchedule } from '../store'
 import { detectConflicts } from '../conflicts'
+import { validateSchedule } from '../validation'
+import { generateGhostSuggestions } from '../ghostEngine'
+import { useLimitacionesStore } from '../limitaciones'
 import { useKeyboardShortcuts } from '../useKeyboardShortcuts'
 import { useScheduleSync } from '../useScheduleSync'
+import { useSchedulerData } from '../useSchedulerData'
 import { WeekGrid } from './WeekGrid'
 import { SubjectPalette } from './SubjectPalette'
 import { InspectorPanel } from './InspectorPanel'
+import { AlertasPanel } from './AlertasPanel'
+import { ConfigPanel } from './ConfigPanel'
 import { VersionBar } from './VersionBar'
 import { AutoSectionsDialog } from './AutoSectionsDialog'
 import type { BlockDragData, DragData, DropCellData, PaletteDragData, ScheduleBlock } from '../types'
@@ -27,6 +33,7 @@ import { cn } from '@/lib/utils'
 import { slotToTime } from '../constants'
 
 export function ScheduleBuilder() {
+  const { isLoading: dataLoading, isError: dataError } = useSchedulerData()
   const subjects = useScheduleStore((s) => s.subjects)
   const professors = useScheduleStore((s) => s.professors)
   const rooms = useScheduleStore((s) => s.rooms)
@@ -42,6 +49,10 @@ export function ScheduleBuilder() {
   const removeBlock = useScheduleStore((s) => s.removeBlock)
   const setCicloFilter = useScheduleStore((s) => s.setCicloFilter)
 
+  const limitaciones = useLimitacionesStore((s) => s.limitaciones)
+  const addBlocksRaw = useScheduleStore((s) => s.addBlocksRaw)
+  const resizeBlock = useScheduleStore((s) => s.resizeBlock)
+
   const blocks = activeSchedule.blocks
 
   const { status: syncStatus, saveNow, deletePlan, lastSaved } = useScheduleSync()
@@ -49,6 +60,12 @@ export function ScheduleBuilder() {
   const [activeDrag, setActiveDrag] = useState<DragData | null>(null)
   const [autoSectionsOpen, setAutoSectionsOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [rightTab, setRightTab] = useState<'inspector' | 'alertas' | 'config'>('inspector')
+  const [activeSuggestionId, setActiveSuggestionId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (selectedBlockId) setRightTab('inspector')
+  }, [selectedBlockId])
 
   useKeyboardShortcuts()
 
@@ -58,6 +75,58 @@ export function ScheduleBuilder() {
   )
 
   const conflicts = useMemo(() => detectConflicts(blocks, subjects, rooms), [blocks, subjects, rooms])
+
+  const validationItems = useMemo(
+    () => validateSchedule(blocks, subjects, professors, rooms, limitaciones),
+    [blocks, subjects, professors, rooms, limitaciones],
+  )
+
+  const ghostSuggestions = useMemo(
+    () => generateGhostSuggestions(validationItems, blocks, subjects, professors, rooms, limitaciones),
+    [validationItems, blocks, subjects, professors, rooms, limitaciones],
+  )
+
+  const activeGhostBlocks = useMemo(() => {
+    if (!activeSuggestionId) return []
+    const suggestion = ghostSuggestions.find((s) => s.id === activeSuggestionId)
+    return suggestion?.ghostBlocks ?? []
+  }, [activeSuggestionId, ghostSuggestions])
+
+  const handleApplySuggestion = useCallback(
+    (suggestionId: string) => {
+      const suggestion = ghostSuggestions.find((s) => s.id === suggestionId)
+      if (!suggestion) return
+
+      const toAdd: ScheduleBlock[] = []
+      for (const ghost of suggestion.ghostBlocks) {
+        switch (ghost.action) {
+          case 'add': {
+            const { ghost: _g, action: _a, originalBlockId: _o, ...data } = ghost
+            toAdd.push(data)
+            break
+          }
+          case 'move':
+            if (ghost.originalBlockId) moveBlock(ghost.originalBlockId, ghost.day, ghost.startSlot)
+            break
+          case 'reassign-professor':
+            if (ghost.originalBlockId) updateBlock(ghost.originalBlockId, { professorId: ghost.professorId })
+            break
+          case 'reassign-room':
+            if (ghost.originalBlockId) updateBlock(ghost.originalBlockId, { roomId: ghost.roomId })
+            break
+          case 'remove':
+            if (ghost.originalBlockId) removeBlock(ghost.originalBlockId)
+            break
+          case 'resize':
+            if (ghost.originalBlockId) resizeBlock(ghost.originalBlockId, ghost.duration)
+            break
+        }
+      }
+      if (toAdd.length > 0) addBlocksRaw(toAdd)
+      setActiveSuggestionId(null)
+    },
+    [ghostSuggestions, moveBlock, updateBlock, removeBlock, resizeBlock, addBlocksRaw],
+  )
 
   const sectionCounts = useMemo(() => {
     const m = new Map<string, number>()
@@ -111,6 +180,25 @@ export function ScheduleBuilder() {
 
   const totalConflicts = conflicts.size
   const totalHours = blocks.reduce((sum, b) => sum + b.duration, 0) / 2
+
+  if (dataLoading) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card">
+        <Loader2 className="h-8 w-8 animate-spin text-status-warning" />
+        <p className="text-sm text-muted-foreground">Cargando materias, profesores y aulas...</p>
+      </div>
+    )
+  }
+
+  if (dataError) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center gap-3 rounded-xl border border-status-critical/30 bg-status-critical/5">
+        <AlertTriangle className="h-8 w-8 text-status-critical" />
+        <p className="text-sm text-status-critical">Error al cargar datos del sistema</p>
+        <p className="text-xs text-muted-foreground">Verifica que el backend esté corriendo y vuelve a intentar</p>
+      </div>
+    )
+  }
 
   return (
     <DndContext
@@ -180,6 +268,7 @@ export function ScheduleBuilder() {
           <div className="h-[720px] overflow-hidden print:h-auto print:overflow-visible" data-print-target>
             <WeekGrid
               blocks={blocks}
+              ghostBlocks={activeGhostBlocks}
               subjects={subjects}
               professors={professors}
               rooms={rooms}
@@ -189,21 +278,48 @@ export function ScheduleBuilder() {
             />
           </div>
 
-          <div className="h-[720px] print:hidden">
-            <InspectorPanel
-              block={selected}
-              subject={selectedSubject}
-              professors={professors}
-              rooms={rooms}
-              conflicts={selectedConflicts}
-              onClose={() => selectBlock(null)}
-              onUpdate={(patch) => selected && updateBlock(selected.id, patch)}
-              onToggleLock={() => selected && toggleLock(selected.id)}
-              onDuplicate={() =>
-                selected && duplicateBlock(selected.id, selected.day, Math.min(selected.startSlot + selected.duration, 28 - selected.duration))
-              }
-              onDelete={() => selected && removeBlock(selected.id)}
-            />
+          <div className="h-[720px] print:hidden flex flex-col rounded-xl border border-border bg-card overflow-hidden">
+            <div className="flex border-b border-border shrink-0">
+              <RightTabBtn active={rightTab === 'inspector'} onClick={() => setRightTab('inspector')} icon={UserIcon}>
+                Inspector
+              </RightTabBtn>
+              <RightTabBtn active={rightTab === 'alertas'} onClick={() => setRightTab('alertas')} icon={Shield}>
+                Alertas
+              </RightTabBtn>
+              <RightTabBtn active={rightTab === 'config'} onClick={() => setRightTab('config')} icon={Settings2}>
+                Config
+              </RightTabBtn>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {rightTab === 'inspector' && (
+                <InspectorPanel
+                  block={selected}
+                  subject={selectedSubject}
+                  professors={professors}
+                  rooms={rooms}
+                  conflicts={selectedConflicts}
+                  onClose={() => selectBlock(null)}
+                  onUpdate={(patch) => selected && updateBlock(selected.id, patch)}
+                  onToggleLock={() => selected && toggleLock(selected.id)}
+                  onDuplicate={() =>
+                    selected && duplicateBlock(selected.id, selected.day, Math.min(selected.startSlot + selected.duration, 28 - selected.duration))
+                  }
+                  onDelete={() => selected && removeBlock(selected.id)}
+                />
+              )}
+              {rightTab === 'alertas' && (
+                <AlertasPanel
+                  items={validationItems}
+                  ghostSuggestions={ghostSuggestions}
+                  activeSuggestionId={activeSuggestionId}
+                  onActivateSuggestion={setActiveSuggestionId}
+                  onApplySuggestion={handleApplySuggestion}
+                  onNavigateBlock={(blockId) => selectBlock(blockId)}
+                  hasBlocks={blocks.length > 0}
+                />
+              )}
+              {rightTab === 'config' && <ConfigPanel />}
+            </div>
           </div>
         </div>
       </div>
@@ -314,6 +430,33 @@ function TrashDropZone({ active }: { active: boolean }) {
       <Trash2 className="h-3.5 w-3.5" />
       {active ? 'Soltar para eliminar' : 'Papelera'}
     </div>
+  )
+}
+
+function RightTabBtn({
+  active,
+  onClick,
+  icon: Icon,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex flex-1 items-center justify-center gap-1 px-2 py-2 text-[10px] font-semibold transition-colors',
+        active
+          ? 'border-b-2 border-status-warning text-status-warning'
+          : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      <Icon className="h-3 w-3" />
+      {children}
+    </button>
   )
 }
 

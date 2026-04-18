@@ -11,11 +11,13 @@ import {
   TOTAL_SLOTS,
   slotToTime,
 } from '../constants'
-import type { ConflictMap, Professor, Room, ScheduleBlock, Subject, DropCellData } from '../types'
+import type { ConflictMap, GhostBlock, Professor, Room, ScheduleBlock, Subject, DropCellData } from '../types'
 import { ClassBlock } from './ClassBlock'
+import { GhostBlockOverlay } from './GhostBlockOverlay'
 
 type Props = {
   blocks: ScheduleBlock[]
+  ghostBlocks?: GhostBlock[]
   subjects: Subject[]
   professors: Professor[]
   rooms: Room[]
@@ -24,7 +26,7 @@ type Props = {
   onSelectBlock: (id: string | null) => void
 }
 
-export function WeekGrid({ blocks, subjects, professors, rooms, conflicts, selectedBlockId, onSelectBlock }: Props) {
+export function WeekGrid({ blocks, ghostBlocks = [], subjects, professors, rooms, conflicts, selectedBlockId, onSelectBlock }: Props) {
   const byId = useMemo(() => ({
     subject: new Map(subjects.map((s) => [s.id, s])),
     professor: new Map(professors.map((p) => [p.id, p])),
@@ -36,6 +38,12 @@ export function WeekGrid({ blocks, subjects, professors, rooms, conflicts, selec
     for (const b of blocks) if (b.day >= 0 && b.day < DAYS.length) arr[b.day].push(b)
     return arr
   }, [blocks])
+
+  const ghostsByDay = useMemo(() => {
+    const arr: GhostBlock[][] = Array.from({ length: DAYS.length }, () => [])
+    for (const b of ghostBlocks) if (b.day >= 0 && b.day < DAYS.length) arr[b.day].push(b)
+    return arr
+  }, [ghostBlocks])
 
   return (
     <div
@@ -94,6 +102,7 @@ export function WeekGrid({ blocks, subjects, professors, rooms, conflicts, selec
             key={day}
             day={day}
             blocks={blocksByDay[day]}
+            ghostBlocks={ghostsByDay[day]}
             subjectsById={byId.subject}
             professorsById={byId.professor}
             roomsById={byId.room}
@@ -110,6 +119,7 @@ export function WeekGrid({ blocks, subjects, professors, rooms, conflicts, selec
 function DayColumn({
   day,
   blocks,
+  ghostBlocks,
   subjectsById,
   professorsById,
   roomsById,
@@ -119,6 +129,7 @@ function DayColumn({
 }: {
   day: number
   blocks: ScheduleBlock[]
+  ghostBlocks: GhostBlock[]
   subjectsById: Map<string, Subject>
   professorsById: Map<string, Professor>
   roomsById: Map<string, Room>
@@ -131,12 +142,10 @@ function DayColumn({
       className="relative border-r border-border last:border-r-0"
       style={{ height: TOTAL_SLOTS * SLOT_HEIGHT_PX }}
     >
-      {/* Slot cells (droppable) — render every slot as a subtle grid line plus a droppable target */}
       {Array.from({ length: TOTAL_SLOTS }).map((_, slot) => (
         <DroppableCell key={slot} day={day} slot={slot} />
       ))}
 
-      {/* Blocks absolutely positioned */}
       {blocks.map((b) => {
         const subject = subjectsById.get(b.subjectId)
         if (!subject) return null
@@ -152,6 +161,12 @@ function DayColumn({
             onSelect={() => onSelectBlock(b.id)}
           />
         )
+      })}
+
+      {ghostBlocks.map((b) => {
+        const subject = subjectsById.get(b.subjectId)
+        if (!subject) return null
+        return <GhostBlockOverlay key={b.id} block={b} subject={subject} />
       })}
     </div>
   )

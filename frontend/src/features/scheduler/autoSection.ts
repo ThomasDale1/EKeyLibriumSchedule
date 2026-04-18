@@ -13,12 +13,20 @@ export type AutoSectionResult = {
   subjectId: string
   sectionCount: number
   perSection: number
+  distribution: number[]
   reason: string
 }
 
 export function suggestSectionCount(demand: number, targetCapacity: number): number {
   if (demand <= 0) return 0
   return Math.max(1, Math.ceil(demand / Math.max(1, targetCapacity)))
+}
+
+export function balancedDistribution(total: number, sections: number): number[] {
+  if (sections <= 0) return []
+  const base = Math.floor(total / sections)
+  const remainder = total % sections
+  return Array.from({ length: sections }, (_, i) => base + (i < remainder ? 1 : 0))
 }
 
 export function planAutoSections(
@@ -32,7 +40,7 @@ export function planAutoSections(
   return inputs.map((input) => {
     const subject = subjectById.get(input.subjectId)
     if (!subject || input.demand <= 0) {
-      return { subjectId: input.subjectId, sectionCount: 0, perSection: 0, reason: 'Sin demanda' }
+      return { subjectId: input.subjectId, sectionCount: 0, perSection: 0, distribution: [], reason: 'Sin demanda' }
     }
 
     const eligibleRooms = rooms.filter((r) => r.tipo === subject.tipoAula)
@@ -41,6 +49,7 @@ export function planAutoSections(
       : 30
 
     const sectionCount = suggestSectionCount(input.demand, avgCap)
+    const distribution = balancedDistribution(input.demand, sectionCount)
     const perSection = Math.ceil(input.demand / sectionCount)
     const existing = existingBlocks.filter((b) => b.subjectId === input.subjectId).length
 
@@ -48,9 +57,10 @@ export function planAutoSections(
       subjectId: input.subjectId,
       sectionCount,
       perSection,
+      distribution,
       reason: existing > 0
-        ? `Cap. prom. ${avgCap} · ${existing} sección(es) ya existen`
-        : `Cap. prom. ${avgCap}`,
+        ? `Cap. prom. ${avgCap} · ${existing} sección(es) ya existen · Dist: [${distribution.join(', ')}]`
+        : `Cap. prom. ${avgCap} · Dist: [${distribution.join(', ')}]`,
     }
   })
 }
@@ -83,7 +93,7 @@ export function generateAutoSectionBlocks(
         startSlot,
         duration: DEFAULT_DURATION_SLOTS,
         locked: false,
-        studentsExpected: r.perSection,
+        studentsExpected: r.distribution[i] ?? r.perSection,
       })
     }
   }
