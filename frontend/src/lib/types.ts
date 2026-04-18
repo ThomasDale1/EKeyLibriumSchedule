@@ -66,6 +66,7 @@ export type Profesor = {
   telefono?: string | null
   tipoContrato: TipoContrato
   costoHora: number
+  costoMensual?: number
   maxHorasDia: number
   maxHorasSemana: number
   activo: boolean

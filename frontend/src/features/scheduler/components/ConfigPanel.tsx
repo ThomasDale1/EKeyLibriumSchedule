@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
@@ -243,14 +243,14 @@ function LimitacionesTab() {
       </Section>
 
       <Section title="Notas globales" icon={StickyNote}>
-        {limitaciones.notasGlobales.map((n, i) => (
+        {limitaciones.notasGlobales.map((nota) => (
           <div
-            key={i}
+            key={nota.id}
             className="flex items-start gap-2 rounded-md border border-border bg-muted/20 p-2 text-[11px] text-foreground"
           >
-            <span className="flex-1">{n}</span>
+            <span className="flex-1">{nota.text}</span>
             <button
-              onClick={() => removeNota(i)}
+              onClick={() => removeNota(nota.id)}
               className="shrink-0 text-muted-foreground hover:text-status-critical"
             >
               <Trash2 className="h-3 w-3" />
@@ -317,7 +317,7 @@ function PrioridadesTab() {
       {mode === 'stack' ? (
         <div className="space-y-1">
           <p className="text-[10px] text-muted-foreground">
-            Arrastra o usa flechas para reordenar. La primera tiene mayor prioridad.
+            Usa las flechas para reordenar. La primera tiene mayor prioridad.
           </p>
           {stack.map((id, index) => {
             const info = PRIORIDADES_CATALOG.find((p) => p.id === id)
@@ -330,7 +330,7 @@ function PrioridadesTab() {
                   info.critical && 'border-status-critical/30 bg-status-critical/5',
                 )}
               >
-                <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" role="presentation" aria-hidden="true" />
                 <span className="mr-1 rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">
                   {index + 1}
                 </span>
@@ -440,25 +440,34 @@ function Toggle({
   checked: boolean
   onChange: (v: boolean) => void
 }) {
+  const id = useId()
+
   return (
     <label className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-1 py-0.5 hover:bg-muted/30">
       <span className="text-[11px] text-foreground">{label}</span>
-      <button
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={cn(
-          'relative h-4 w-7 rounded-full transition-colors',
-          checked ? 'bg-status-warning' : 'bg-muted',
-        )}
-      >
-        <span
-          className={cn(
-            'absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform',
-            checked ? 'translate-x-3.5' : 'translate-x-0.5',
-          )}
+      <span className="relative inline-flex h-4 w-7 items-center">
+        <input
+          id={id}
+          type="checkbox"
+          className="sr-only"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
         />
-      </button>
+        <span
+          aria-hidden="true"
+          className={cn(
+            'block h-4 w-7 rounded-full transition-colors',
+            checked ? 'bg-status-warning' : 'bg-muted',
+          )}
+        >
+          <span
+            className={cn(
+              'absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white transition-transform',
+              checked ? 'translate-x-3.5' : 'translate-x-0.5',
+            )}
+          />
+        </span>
+      </span>
     </label>
   )
 }

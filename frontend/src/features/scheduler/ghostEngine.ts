@@ -20,6 +20,14 @@ function slotToTimeStr(slot: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+function normalizeString(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 function buildOccupancyGrid(blocks: ScheduleBlock[]): boolean[][] {
   const grid: boolean[][] = Array.from({ length: 6 }, () => Array(TOTAL_SLOTS).fill(false))
   for (const b of blocks) {
@@ -350,8 +358,13 @@ export function generateGhostSuggestions(
         const tempOccupancy = globalOccupancy.map((day) => [...day])
         let attempts = 0
 
+        const allowedDurations = limitaciones.duracionesPermitidas.length > 0
+          ? [...limitaciones.duracionesPermitidas].sort((a, b) => a - b)
+          : [2, 3, 4, 5, 6]
+
         while (remaining > 0 && attempts < 10) {
-          const dur = Math.min(remaining, 2)
+          const dur = allowedDurations.find((d) => d <= remaining)
+          if (!dur) break
           const daysWithSubject = new Set([
             ...existingBlocks.map((b) => b.day),
             ...ghosts.map((g) => g.day),
@@ -377,6 +390,10 @@ export function generateGhostSuggestions(
 
           for (let s = slot.startSlot; s < slot.startSlot + dur; s++) {
             tempOccupancy[slot.day][s] = true
+            if (room) {
+              const roomGrid = roomOccupancy.get(room.id)
+              if (roomGrid) roomGrid[slot.day][s] = true
+            }
           }
 
           const roomInfo = room ? `en ${room.codigo} (${room.tipo}, cap. ${room.capacidad})` : '(sin aula sugerida)'
@@ -409,7 +426,12 @@ export function generateGhostSuggestions(
     // --- Professor weekly overload ---
     if (item.category === 'Sobrecarga profesor') {
       for (const prof of professors) {
-        if (!item.message.includes(prof.nombre)) continue
+        const professorMatches = item.professorId
+          ? item.professorId === prof.id
+          : item.professorFullName
+          ? normalizeString(item.professorFullName) === normalizeString(`${prof.nombre} ${prof.apellido}`)
+          : false
+        if (!professorMatches) continue
         const profBlocks = blocks.filter((b) => b.professorId === prof.id)
         const weekSlots = profBlocks.reduce((s, b) => s + b.duration, 0)
         const weekHours = (weekSlots * SLOT_MINUTES) / 60
@@ -543,11 +565,28 @@ export function generateGhostSuggestions(
         if (!block || block.locked) continue
         const subject = subjectById.get(block.subjectId)
         if (!subject) continue
-        const closest = allowed.reduce((best, d) =>
+        let closest = allowed.reduce((best, d) =>
           Math.abs(d - block.duration) < Math.abs(best - block.duration) ? d : best, allowed[0])
-        const ghost = makeGhostBlock({ ...block, duration: closest }, 'resize', block.id)
-        ghosts.push(ghost)
-        steps.push({
+      
+      if (closest > block.duration) {
+        const sameDayBlocks = blocks
+          .filter((b) => b.day === block.day && b.id !== block.id)
+          .sort((a, b) => a.startSlot - b.startSlot)
+        const nextBlock = sameDayBlocks.find((b) => b.startSlot > block.startSlot)
+        if (nextBlock) {
+          const maxDuration = nextBlock.startSlot - block.startSlot
+          const feasible = allowed.filter((d) => d <= maxDuration)
+          if (feasible.length > 0) {
+            closest = Math.max(...feasible)
+          } else {
+            closest = block.duration
+          }
+        }
+      }
+
+      const ghost = makeGhostBlock({ ...block, duration: closest }, 'resize', block.id)
+      ghosts.push(ghost)
+      steps.push({
           order: steps.length + 1,
           instruction: `Redimensionar ${subject.codigo} §${block.sectionLabel} a ${closest} slots`,
           detail: `Cambiar de ${block.duration} slots (${(block.duration * SLOT_MINUTES / 60).toFixed(1)}h) a ${closest} slots (${(closest * SLOT_MINUTES / 60).toFixed(1)}h). Duraciones permitidas: [${allowed.join(', ')}].`,

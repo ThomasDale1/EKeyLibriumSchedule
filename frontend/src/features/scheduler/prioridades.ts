@@ -105,8 +105,10 @@ export const usePrioridadesStore = create<PrioridadesState & PrioridadesActions>
       moveStackItem: (from, to) =>
         set((s) => {
           const arr = [...s.stack]
+          if (!Number.isInteger(from) || from < 0 || from >= arr.length) return s
           const [item] = arr.splice(from, 1)
-          arr.splice(to, 0, item)
+          const clampedTo = Math.max(0, Math.min(arr.length, to))
+          arr.splice(clampedTo, 0, item)
           return { stack: arr }
         }),
 

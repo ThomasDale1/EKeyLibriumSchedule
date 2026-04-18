@@ -673,11 +673,8 @@ function computeKpis(
 
   // Professor cost estimate (monthly): hourly * maxHorasSemana * 4.33 weeks, or fixed for full/half
   const costoDocente = profesores.reduce((s, p) => {
-    if (p.tipoContrato === 'POR_HORA') {
-      return s + (p.costoHora ?? 0) * (p.maxHorasSemana ?? 0) * 4.33
-    }
-    // Fallback: use costoHora as a base if monthly cost is not defined in the type
-    return s + (p.costoHora ?? 0)
+    const monthlyCost = p.costoMensual ?? ((p.costoHora ?? 0) * (p.maxHorasSemana ?? 0) * 4.33)
+    return s + monthlyCost
   }, 0)
 
   const balanceMensual = ingresoEstudiantes - costoAulas - costoDocente

@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
+export type NotaGlobal = {
+  id: string
+  text: string
+}
+
 export type Limitaciones = {
   incluirSabado: boolean
   horaInicioMin: string
@@ -28,7 +33,7 @@ export type Limitaciones = {
   bloquearDesayuno: boolean
   maxBloquesPorDiaPorMateria: number | null
 
-  notasGlobales: string[]
+  notasGlobales: NotaGlobal[]
 }
 
 const DEFAULT_LIMITACIONES: Limitaciones = {
@@ -66,7 +71,7 @@ type LimitacionesStore = {
   setLimitaciones: (patch: Partial<Limitaciones>) => void
   resetLimitaciones: () => void
   addNota: (nota: string) => void
-  removeNota: (index: number) => void
+  removeNota: (id: string) => void
 }
 
 export const useLimitacionesStore = create<LimitacionesStore>()(
@@ -81,14 +86,22 @@ export const useLimitacionesStore = create<LimitacionesStore>()(
         set((s) => ({
           limitaciones: {
             ...s.limitaciones,
-            notasGlobales: [...s.limitaciones.notasGlobales, nota],
+            notasGlobales: [
+              ...s.limitaciones.notasGlobales,
+              {
+                id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+                  ? crypto.randomUUID()
+                  : `n-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+                text: nota,
+              },
+            ],
           },
         })),
-      removeNota: (index) =>
+      removeNota: (id) =>
         set((s) => ({
           limitaciones: {
             ...s.limitaciones,
-            notasGlobales: s.limitaciones.notasGlobales.filter((_, i) => i !== index),
+            notasGlobales: s.limitaciones.notasGlobales.filter((nota) => nota.id !== id),
           },
         })),
     }),
@@ -97,9 +110,27 @@ export const useLimitacionesStore = create<LimitacionesStore>()(
       storage: createJSONStorage(() => localStorage),
       merge: (persisted, current) => {
         const ps = persisted as Partial<LimitacionesStore> | undefined
+        const persistedLimitaciones = (ps?.limitaciones ?? {}) as Partial<Limitaciones>
+        const persistedNotas = Array.isArray(persistedLimitaciones.notasGlobales)
+          ? persistedLimitaciones.notasGlobales.map((nota) =>
+              typeof nota === 'string'
+                ? {
+                    id:
+                      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+                        ? crypto.randomUUID()
+                        : `n-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+                    text: nota,
+                  }
+                : nota
+            )
+          : []
         return {
           ...current,
-          limitaciones: { ...DEFAULT_LIMITACIONES, ...(ps?.limitaciones ?? {}) },
+          limitaciones: {
+            ...DEFAULT_LIMITACIONES,
+            ...persistedLimitaciones,
+            notasGlobales: persistedNotas,
+          },
         } as LimitacionesStore
       },
     },

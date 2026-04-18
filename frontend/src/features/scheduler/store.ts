@@ -35,6 +35,7 @@ type Actions = {
   updateBlock: (id: string, patch: Partial<ScheduleBlock>) => void
   toggleLock: (id: string) => void
   removeBlock: (id: string) => void
+  setActiveBlocks: (blocks: ScheduleBlock[]) => void
   setCicloFilter: (ciclo: number | null) => void
 
   setSubjects: (subjects: Subject[]) => void
@@ -173,6 +174,15 @@ export const useScheduleStore = create<State & Actions>()(
         })),
 
       setCicloFilter: (ciclo) => set({ cicloFilter: ciclo }),
+      setActiveBlocks: (blocks) =>
+        set((state) => {
+          const schedules = state.schedules.map((sch) =>
+            sch.id === state.activeScheduleId
+              ? { ...sch, blocks, updatedAt: Date.now() }
+              : sch,
+          )
+          return { schedules }
+        }),
 
       setSubjects: (subjects) => set({ subjects }),
       setProfessors: (professors) => set({ professors }),

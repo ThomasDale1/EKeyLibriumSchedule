@@ -52,6 +52,10 @@ export function planAutoSections(
     const distribution = balancedDistribution(input.demand, sectionCount)
     const perSection = Math.ceil(input.demand / sectionCount)
     const existing = existingBlocks.filter((b) => b.subjectId === input.subjectId).length
+    const maxPreview = 10
+    const distributionPreview = distribution.length > maxPreview
+      ? [...distribution.slice(0, maxPreview), `...(+${distribution.length - maxPreview} more)`].join(', ')
+      : distribution.join(', ')
 
     return {
       subjectId: input.subjectId,
@@ -59,8 +63,8 @@ export function planAutoSections(
       perSection,
       distribution,
       reason: existing > 0
-        ? `Cap. prom. ${avgCap} · ${existing} sección(es) ya existen · Dist: [${distribution.join(', ')}]`
-        : `Cap. prom. ${avgCap} · Dist: [${distribution.join(', ')}]`,
+        ? `Cap. prom. ${avgCap} · ${existing} sección(es) ya existen · Dist: [${distributionPreview}]`
+        : `Cap. prom. ${avgCap} · Dist: [${distributionPreview}]`,
     }
   })
 }

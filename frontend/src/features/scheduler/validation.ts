@@ -1,6 +1,6 @@
 import type { Professor, Room, ScheduleBlock, Subject } from './types'
 import type { Limitaciones } from './limitaciones'
-import { DAYS, SLOT_MINUTES, SLOTS_PER_HOUR, START_HOUR, TOTAL_SLOTS } from './constants'
+import { DAYS, SLOT_MINUTES, SLOTS_PER_HOUR, START_HOUR } from './constants'
 
 export type ValidationSeverity = 'critical' | 'high' | 'medium' | 'low'
 
@@ -12,6 +12,8 @@ export type ValidationItem = {
   action?: string
   blockIds?: string[]
   subjectId?: string
+  professorId?: string
+  professorFullName?: string
 }
 
 function timeToSlot(time: string): number {
@@ -98,6 +100,8 @@ export function validateSchedule(
         message: `${prof.nombre} ${prof.apellido} tiene ${weekHours}h/sem (máx: ${prof.maxHorasSemana}h)`,
         detail: `Excede por ${(weekHours - prof.maxHorasSemana).toFixed(1)}h su límite semanal.`,
         action: `Reasigna ${((weekHours - prof.maxHorasSemana) * 60 / SLOT_MINUTES).toFixed(0)} slots a otro profesor`,
+        professorId: prof.id,
+        professorFullName: `${prof.nombre} ${prof.apellido}`,
       })
     }
 
@@ -275,8 +279,11 @@ export function validateSchedule(
 
     // Breakfast overlap
     if (limitaciones.bloquearDesayuno) {
+      const bfStart = (7 - START_HOUR) * SLOTS_PER_HOUR
       const bfEnd = (8 - START_HOUR) * SLOTS_PER_HOUR
-      const bfBlocks = blocks.filter((b) => b.startSlot < bfEnd)
+      const bfBlocks = blocks.filter(
+        (b) => b.startSlot + b.duration > bfStart && b.startSlot < bfEnd,
+      )
       if (bfBlocks.length > 0) {
         items.push({
           severity: 'medium',

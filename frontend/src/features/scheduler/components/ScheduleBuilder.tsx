@@ -47,10 +47,10 @@ export function ScheduleBuilder() {
   const updateBlock = useScheduleStore((s) => s.updateBlock)
   const toggleLock = useScheduleStore((s) => s.toggleLock)
   const removeBlock = useScheduleStore((s) => s.removeBlock)
+  const setActiveBlocks = useScheduleStore((s) => s.setActiveBlocks)
   const setCicloFilter = useScheduleStore((s) => s.setCicloFilter)
 
   const limitaciones = useLimitacionesStore((s) => s.limitaciones)
-  const addBlocksRaw = useScheduleStore((s) => s.addBlocksRaw)
   const resizeBlock = useScheduleStore((s) => s.resizeBlock)
 
   const blocks = activeSchedule.blocks
@@ -97,7 +97,9 @@ export function ScheduleBuilder() {
       const suggestion = ghostSuggestions.find((s) => s.id === suggestionId)
       if (!suggestion) return
 
+      let nextBlocks = [...blocks]
       const toAdd: ScheduleBlock[] = []
+
       for (const ghost of suggestion.ghostBlocks) {
         switch (ghost.action) {
           case 'add': {
@@ -106,26 +108,49 @@ export function ScheduleBuilder() {
             break
           }
           case 'move':
-            if (ghost.originalBlockId) moveBlock(ghost.originalBlockId, ghost.day, ghost.startSlot)
+            if (ghost.originalBlockId) {
+              nextBlocks = nextBlocks.map((b) =>
+                b.id === ghost.originalBlockId ? { ...b, day: ghost.day, startSlot: ghost.startSlot } : b,
+              )
+            }
             break
           case 'reassign-professor':
-            if (ghost.originalBlockId) updateBlock(ghost.originalBlockId, { professorId: ghost.professorId })
+            if (ghost.originalBlockId) {
+              nextBlocks = nextBlocks.map((b) =>
+                b.id === ghost.originalBlockId ? { ...b, professorId: ghost.professorId } : b,
+              )
+            }
             break
           case 'reassign-room':
-            if (ghost.originalBlockId) updateBlock(ghost.originalBlockId, { roomId: ghost.roomId })
+            if (ghost.originalBlockId) {
+              nextBlocks = nextBlocks.map((b) =>
+                b.id === ghost.originalBlockId ? { ...b, roomId: ghost.roomId } : b,
+              )
+            }
             break
           case 'remove':
-            if (ghost.originalBlockId) removeBlock(ghost.originalBlockId)
+            if (ghost.originalBlockId) {
+              nextBlocks = nextBlocks.filter((b) => b.id !== ghost.originalBlockId)
+            }
             break
           case 'resize':
-            if (ghost.originalBlockId) resizeBlock(ghost.originalBlockId, ghost.duration)
+            if (ghost.originalBlockId) {
+              nextBlocks = nextBlocks.map((b) =>
+                b.id === ghost.originalBlockId ? { ...b, duration: ghost.duration } : b,
+              )
+            }
             break
         }
       }
-      if (toAdd.length > 0) addBlocksRaw(toAdd)
+
+      if (toAdd.length > 0) {
+        nextBlocks = [...nextBlocks, ...toAdd]
+      }
+
+      setActiveBlocks(nextBlocks)
       setActiveSuggestionId(null)
     },
-    [ghostSuggestions, moveBlock, updateBlock, removeBlock, resizeBlock, addBlocksRaw],
+    [ghostSuggestions, blocks, setActiveBlocks],
   )
 
   const sectionCounts = useMemo(() => {
