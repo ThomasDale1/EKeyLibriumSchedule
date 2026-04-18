@@ -359,8 +359,8 @@ export function generateGhostSuggestions(
         let attempts = 0
 
         const allowedDurations = limitaciones.duracionesPermitidas.length > 0
-          ? [...limitaciones.duracionesPermitidas].sort((a, b) => a - b)
-          : [2, 3, 4, 5, 6]
+          ? [...limitaciones.duracionesPermitidas].sort((a, b) => b - a)
+          : [6, 5, 4, 3, 2]
 
         while (remaining > 0 && attempts < 10) {
           const dur = allowedDurations.find((d) => d <= remaining)
@@ -425,14 +425,15 @@ export function generateGhostSuggestions(
 
     // --- Professor weekly overload ---
     if (item.category === 'Sobrecarga profesor') {
+      const workingBlocks = [...blocks]
       for (const prof of professors) {
+        const normalizedMessage = normalizeString(item.message)
+        const normalizedProfName = normalizeString(`${prof.nombre} ${prof.apellido}`)
         const professorMatches = item.professorId
           ? item.professorId === prof.id
-          : item.professorFullName
-          ? normalizeString(item.professorFullName) === normalizeString(`${prof.nombre} ${prof.apellido}`)
-          : false
+          : normalizedMessage.includes(normalizedProfName)
         if (!professorMatches) continue
-        const profBlocks = blocks.filter((b) => b.professorId === prof.id)
+        const profBlocks = workingBlocks.filter((b) => b.professorId === prof.id)
         const weekSlots = profBlocks.reduce((s, b) => s + b.duration, 0)
         const weekHours = (weekSlots * SLOT_MINUTES) / 60
         if (weekHours <= prof.maxHorasSemana) continue
@@ -455,7 +456,7 @@ export function generateGhostSuggestions(
 
           const newProf = findAvailableProfessor(
             professors.filter((p) => p.id !== prof.id),
-            blocks, profOccupancy, block.day, block.startSlot, block.duration,
+            workingBlocks, profOccupancy, block.day, block.startSlot, block.duration,
           )
           if (newProf) {
             const ghost = makeGhostBlock({ ...block, professorId: newProf.id }, 'reassign-professor', block.id)
@@ -468,6 +469,12 @@ export function generateGhostSuggestions(
               existingBlockIds: [block.id],
             })
             slotsToReassign -= block.duration
+            const grid = profOccupancy.get(newProf.id) ?? Array.from({ length: 6 }, () => Array(TOTAL_SLOTS).fill(false))
+            if (!profOccupancy.has(newProf.id)) profOccupancy.set(newProf.id, grid)
+            for (let s = block.startSlot; s < block.startSlot + block.duration && s < TOTAL_SLOTS; s++) {
+              if (block.day >= 0 && block.day < 6) grid[block.day][s] = true
+            }
+            workingBlocks.push({ ...block, professorId: newProf.id })
           }
         }
 
@@ -567,26 +574,23 @@ export function generateGhostSuggestions(
         if (!subject) continue
         let closest = allowed.reduce((best, d) =>
           Math.abs(d - block.duration) < Math.abs(best - block.duration) ? d : best, allowed[0])
-      
-      if (closest > block.duration) {
-        const sameDayBlocks = blocks
-          .filter((b) => b.day === block.day && b.id !== block.id)
-          .sort((a, b) => a.startSlot - b.startSlot)
-        const nextBlock = sameDayBlocks.find((b) => b.startSlot > block.startSlot)
-        if (nextBlock) {
-          const maxDuration = nextBlock.startSlot - block.startSlot
-          const feasible = allowed.filter((d) => d <= maxDuration)
-          if (feasible.length > 0) {
+
+        if (closest > block.duration) {
+          const sameDayBlocks = blocks
+            .filter((b) => b.day === block.day && b.id !== block.id)
+            .sort((a, b) => a.startSlot - b.startSlot)
+          const nextBlock = sameDayBlocks.find((b) => b.startSlot > block.startSlot)
+          if (nextBlock) {
+            const maxDuration = nextBlock.startSlot - block.startSlot
+            const feasible = allowed.filter((d) => d <= maxDuration)
+            if (feasible.length === 0) continue
             closest = Math.max(...feasible)
-          } else {
-            closest = block.duration
           }
         }
-      }
 
-      const ghost = makeGhostBlock({ ...block, duration: closest }, 'resize', block.id)
-      ghosts.push(ghost)
-      steps.push({
+        const ghost = makeGhostBlock({ ...block, duration: closest }, 'resize', block.id)
+        ghosts.push(ghost)
+        steps.push({
           order: steps.length + 1,
           instruction: `Redimensionar ${subject.codigo} §${block.sectionLabel} a ${closest} slots`,
           detail: `Cambiar de ${block.duration} slots (${(block.duration * SLOT_MINUTES / 60).toFixed(1)}h) a ${closest} slots (${(closest * SLOT_MINUTES / 60).toFixed(1)}h). Duraciones permitidas: [${allowed.join(', ')}].`,

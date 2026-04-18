@@ -318,7 +318,7 @@ export function validateSchedule(
           for (const b of sorted) {
             const gap = b.startSlot - prevEnd
             if (prevEnd >= 0 && gap <= (limitaciones.descansoMinSlots || 0)) {
-              consecutiveSlots += b.duration + gap
+              consecutiveSlots += b.duration
               chainBlocks.push(b)
             } else {
               consecutiveSlots = b.duration

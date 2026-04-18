@@ -342,6 +342,7 @@ function PrioridadesTab() {
                   <button
                     disabled={index === 0}
                     onClick={() => moveStackItem(index, index - 1)}
+                    aria-label={`Mover ${info.label} arriba`}
                     className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
                   >
                     <ArrowUp className="h-3 w-3" />
@@ -349,6 +350,7 @@ function PrioridadesTab() {
                   <button
                     disabled={index === stack.length - 1}
                     onClick={() => moveStackItem(index, index + 1)}
+                    aria-label={`Mover ${info.label} abajo`}
                     className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
                   >
                     <ArrowDown className="h-3 w-3" />
@@ -389,6 +391,7 @@ function PrioridadesTab() {
                 step={5}
                 value={(weights[info.id] ?? 0) * 100}
                 onChange={(e) => setWeight(info.id, +e.target.value / 100)}
+                aria-label={`Peso para ${info.label}`}
                 className="h-1.5 w-full accent-status-warning"
               />
             </div>

@@ -30,7 +30,16 @@ import {
 } from '@/hooks/useApiQueries'
 import type { Carrera, Estudiante, Materia, Profesor, Aula } from '@/lib/types'
 
-// ── Main Page ──
+function parseTimeToHours(time?: string): number {
+  if (!time) return 0
+  const [hours, minutes] = time.split(':')
+  const h = Number(hours)
+  const m = Number(minutes ?? '0')
+  if (Number.isNaN(h) || Number.isNaN(m)) return 0
+  return h + m / 60
+}
+
+// ── Main Page ─
 
 export default function Analytics() {
   const { data: estudiantes = [], isLoading: loadingEst, isError: estudiantesError, error: estudiantesErrorData } = EstudiantesApi.useList()
@@ -303,9 +312,7 @@ export default function Analytics() {
               {profesores.slice(0, 8).map((p) => {
                 const workBlocks = (p.disponibilidad ?? []).filter((d) => !d.esBloqueo)
                 const workHrs = workBlocks.reduce((s, d) => {
-                  const [h1, m1] = d.horaInicio.split(':').map(Number)
-                  const [h2, m2] = d.horaFin.split(':').map(Number)
-                  return s + (h2 + m2 / 60) - (h1 + m1 / 60)
+                  return s + parseTimeToHours(d.horaFin) - parseTimeToHours(d.horaInicio)
                 }, 0)
                 const subjectCount = (p.materias ?? []).length
                 return (
@@ -812,9 +819,7 @@ function computeKpis(
   const overloadedProfs = profesores.filter((p) => {
     const workBlocks = (p.disponibilidad ?? []).filter((d) => !d.esBloqueo)
     const workHrs = workBlocks.reduce((s, d) => {
-      const [h1, m1] = d.horaInicio.split(':').map(Number)
-      const [h2, m2] = d.horaFin.split(':').map(Number)
-      return s + (h2 + m2 / 60) - (h1 + m1 / 60)
+      return s + parseTimeToHours(d.horaFin) - parseTimeToHours(d.horaInicio)
     }, 0)
     return workHrs > p.maxHorasSemana
   })
