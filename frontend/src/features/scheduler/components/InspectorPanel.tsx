@@ -145,7 +145,7 @@ export function InspectorPanel({
           >
             <option value="">— Sin asignar —</option>
             {rooms
-              .filter((r) => r.capacidad >= block.studentsExpected && r.tipo === subject.tipoAula)
+              .filter((r) => r.capacidad >= block.studentsExpected && (!subject.tipoAula || r.tipo === subject.tipoAula))
               .map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.codigo} — {r.nombre} (cap. {r.capacidad})

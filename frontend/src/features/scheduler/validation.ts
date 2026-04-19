@@ -382,14 +382,21 @@ export function validateSchedule(
     if (!subject) continue
     const totalStudents = blocks
       .filter((b) => b.subjectId === subjectId)
-      .reduce((max, b) => Math.max(max, b.studentsExpected), 0)
+      .reduce((sum, b) => {
+        const sectionKey = `${b.subjectId}-${b.sectionLabel}`
+        const currentMax = sum.get(sectionKey) ?? 0
+        return sum.set(sectionKey, Math.max(currentMax, b.studentsExpected))
+      }, new Map<string, number>())
+      .values()
+      .reduce((total, max) => total + max, 0)
 
     const eligibleRooms = rooms.filter((r) => r.tipo === subject.tipoAula)
     const maxCap = eligibleRooms.length > 0
       ? Math.max(...eligibleRooms.map((r) => r.capacidad))
       : 30
+    const safeMaxCap = Math.max(maxCap, 1)
 
-    const neededSections = Math.max(1, Math.ceil(totalStudents / maxCap))
+    const neededSections = Math.max(1, Math.ceil(totalStudents / safeMaxCap))
 
     if (sections.size > neededSections) {
       items.push({

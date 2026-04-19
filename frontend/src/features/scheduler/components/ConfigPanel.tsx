@@ -129,7 +129,7 @@ function LimitacionesTab() {
           <input
             type="number"
             min={0}
-            value={limitaciones.parqueoMax || ''}
+            value={limitaciones.parqueoMax ?? ''}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setLimitaciones({ parqueoMax: Math.max(0, +e.target.value) })}
             className="h-7 w-16 rounded-md border border-border bg-background px-2 text-right text-xs"
@@ -167,7 +167,7 @@ function LimitacionesTab() {
           <input
             type="number"
             min={0}
-            value={limitaciones.descansoMinSlots || ''}
+            value={limitaciones.descansoMinSlots ?? ''}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setLimitaciones({ descansoMinSlots: Math.max(0, +e.target.value) })}
             className="h-7 w-16 rounded-md border border-border bg-background px-2 text-right text-xs"
@@ -335,9 +335,11 @@ function PrioridadesTab() {
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      const oldIndex = stack.indexOf(active.id as any)
-      const newIndex = stack.indexOf(over.id as any)
-      setStack(arrayMove(stack, oldIndex, newIndex))
+      const oldIndex = stack.indexOf(active.id)
+      const newIndex = stack.indexOf(over.id)
+      if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
+        setStack(arrayMove(stack, oldIndex, newIndex))
+      }
     }
   }
 

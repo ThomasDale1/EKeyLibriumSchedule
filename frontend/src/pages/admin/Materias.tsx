@@ -126,7 +126,7 @@ export default function Materias() {
   const submitCarrera = async () => {
     if (!carreraForm.nombre.trim() || !carreraForm.codigo.trim()) return alert('Nombre y código son requeridos')
     try {
-      await createCarrera.mutateAsync(carreraForm as any)
+      await createCarrera.mutateAsync(carreraForm)
       setCarreraModalOpen(false)
       setCarreraForm({ nombre: '', codigo: '', duracionCiclos: 10, descripcion: '' })
     } catch (e: unknown) {
@@ -357,13 +357,13 @@ export default function Materias() {
         </Field>
         <div className="grid grid-cols-3 gap-3">
           <Field label="Créditos">
-            <input type="number" min={1} className={inputClass} value={form.creditos || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, creditos: +e.target.value || 0 })} required />
+            <input type="number" min={1} className={inputClass} value={form.creditos || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, creditos: Math.max(1, +e.target.value) || undefined })} required />
           </Field>
           <Field label="Horas/sem">
-            <input type="number" min={1} className={inputClass} value={form.horasSemanales || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, horasSemanales: +e.target.value || 0 })} required />
+            <input type="number" min={1} className={inputClass} value={form.horasSemanales || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, horasSemanales: Math.max(1, +e.target.value) || undefined })} required />
           </Field>
           <Field label="Ciclo">
-            <input type="number" min={1} max={maxCiclo} className={inputClass} value={form.ciclo || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, ciclo: +e.target.value || 0 })} required />
+            <input type="number" min={1} max={maxCiclo} className={inputClass} value={form.ciclo || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, ciclo: Math.max(1, +e.target.value) || undefined })} required />
           </Field>
         </div>
         <Field label="Tipo de aula">
@@ -403,7 +403,10 @@ export default function Materias() {
           <input className={inputClass} value={carreraForm.codigo} onChange={(e) => setCarreraForm({ ...carreraForm, codigo: e.target.value })} required />
         </Field>
         <Field label="Duración (ciclos)">
-          <input type="number" min={1} max={20} className={inputClass} value={carreraForm.duracionCiclos || ''} onFocus={(e) => e.target.select()} onChange={(e) => setCarreraForm({ ...carreraForm, duracionCiclos: +e.target.value || 0 })} required />
+          <input type="number" min={1} max={20} className={inputClass} value={carreraForm.duracionCiclos || ''} onFocus={(e) => e.target.select()} onChange={(e) => {
+            const v = e.target.value.trim()
+            setCarreraForm({ ...carreraForm, duracionCiclos: v === '' ? undefined : Math.max(1, +v) || undefined })
+          }} required />
         </Field>
         <Field label="Descripción">
           <textarea className={inputClass + ' min-h-[60px]'} value={carreraForm.descripcion} onChange={(e) => setCarreraForm({ ...carreraForm, descripcion: e.target.value })} />

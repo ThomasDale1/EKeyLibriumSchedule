@@ -31,18 +31,25 @@ export function computeBlockLayouts(blocks: ScheduleBlock[]): Map<string, BlockL
 
   const groups: ScheduleBlock[][] = []
   for (const block of sorted) {
-    let placed = false
-    for (const group of groups) {
+    const overlappingGroups: number[] = []
+    for (let i = 0; i < groups.length; i++) {
+      const group = groups[i]
       const overlaps = group.some(
         (g) => block.startSlot < g.startSlot + g.duration && block.startSlot + block.duration > g.startSlot,
       )
       if (overlaps) {
-        group.push(block)
-        placed = true
-        break
+        overlappingGroups.push(i)
       }
     }
-    if (!placed) groups.push([block])
+    if (overlappingGroups.length > 0) {
+      const mergedGroup = [block]
+      for (const idx of overlappingGroups.reverse()) {
+        mergedGroup.push(...groups.splice(idx, 1)[0])
+      }
+      groups.push(mergedGroup)
+    } else {
+      groups.push([block])
+    }
   }
 
   for (const group of groups) {
