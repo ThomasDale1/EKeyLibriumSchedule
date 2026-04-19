@@ -8,6 +8,7 @@ import { COLOR_STYLES } from '../colors'
 import { severity } from '../conflicts'
 import type { BlockDragData, Conflict, Professor, Room, ScheduleBlock, Subject } from '../types'
 import { useScheduleStore } from '../store'
+import type { BlockLayout } from './WeekGrid'
 
 type Props = {
   block: ScheduleBlock
@@ -17,9 +18,11 @@ type Props = {
   conflicts: Conflict[] | undefined
   selected: boolean
   onSelect: () => void
+  layout?: BlockLayout
+  gridStartSlot?: number
 }
 
-export function ClassBlock({ block, subject, professor, room, conflicts, selected, onSelect }: Props) {
+export function ClassBlock({ block, subject, professor, room, conflicts, selected, onSelect, layout, gridStartSlot = 0 }: Props) {
   const resizeBlock = useScheduleStore((s) => s.resizeBlock)
   const [resizing, setResizing] = useState(false)
   const [hoverPreview, setHoverPreview] = useState<number | null>(null)
@@ -36,6 +39,11 @@ export function ClassBlock({ block, subject, professor, room, conflicts, selecte
   const sev = severity(conflicts)
   const displayDuration = hoverPreview ?? block.duration
   const height = displayDuration * SLOT_HEIGHT_PX - 4
+
+  const col = layout?.column ?? 0
+  const totalCols = layout?.totalColumns ?? 1
+  const widthPercent = 100 / totalCols
+  const leftPercent = col * widthPercent
 
   function startResize(e: React.PointerEvent) {
     if (block.locked) return
@@ -72,13 +80,16 @@ export function ClassBlock({ block, subject, professor, room, conflicts, selecte
       ref={setNodeRef}
       style={{
         transform: CSS.Translate.toString(transform),
-        top: block.startSlot * SLOT_HEIGHT_PX + 2,
+        top: (block.startSlot - gridStartSlot) * SLOT_HEIGHT_PX + 2,
         height,
+        left: totalCols > 1 ? `calc(${leftPercent}% + 2px)` : 4,
+        width: totalCols > 1 ? `calc(${widthPercent}% - 4px)` : undefined,
+        right: totalCols > 1 ? undefined : 4,
         opacity: isDragging ? 0.5 : 1,
         zIndex: selected ? 30 : isDragging ? 40 : 10,
       }}
       className={cn(
-        'group absolute left-1 right-1 rounded-md border text-left transition-shadow',
+        'group absolute rounded-md border text-left transition-shadow',
         colorStyle.bg,
         colorStyle.border,
         sev === 'critical' && 'ring-2 ring-status-critical/70 border-status-critical',

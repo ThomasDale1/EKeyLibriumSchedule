@@ -60,9 +60,12 @@ export default function Materias() {
   const create = MateriasApi.useCreate()
   const remove = MateriasApi.useDelete()
 
+  const createCarrera = Carreras.useCreate()
+
   const [selectedCarreraId, setSelectedCarreraId] = useState<string>('')
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
+  const [carreraModalOpen, setCarreraModalOpen] = useState(false)
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set())
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null)
   const [form, setForm] = useState({
@@ -73,6 +76,12 @@ export default function Materias() {
     ciclo: 1,
     tipoAula: 'TEORIA' as TipoAula,
     carreraId: '',
+  })
+  const [carreraForm, setCarreraForm] = useState({
+    nombre: '',
+    codigo: '',
+    duracionCiclos: 10,
+    descripcion: '',
   })
 
   const selectedCarrera = carreras.find((c) => c.id === selectedCarreraId) ?? carreras[0]
@@ -110,6 +119,18 @@ export default function Materias() {
       setForm({ codigo: '', nombre: '', creditos: 4, horasSemanales: 4, ciclo: 1, tipoAula: 'TEORIA', carreraId: '' })
     } catch (e: unknown) {
       const message = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al crear'
+      alert(message)
+    }
+  }
+
+  const submitCarrera = async () => {
+    if (!carreraForm.nombre.trim() || !carreraForm.codigo.trim()) return alert('Nombre y código son requeridos')
+    try {
+      await createCarrera.mutateAsync(carreraForm as any)
+      setCarreraModalOpen(false)
+      setCarreraForm({ nombre: '', codigo: '', duracionCiclos: 10, descripcion: '' })
+    } catch (e: unknown) {
+      const message = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Error al crear carrera'
       alert(message)
     }
   }
@@ -156,6 +177,13 @@ export default function Materias() {
           selected={selectedCarrera}
           onChange={setSelectedCarreraId}
         />
+
+        <button
+          onClick={() => setCarreraModalOpen(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-dashed border-border bg-card px-3 text-sm text-muted-foreground hover:border-status-warning/50 hover:text-foreground"
+        >
+          <Plus className="h-3.5 w-3.5" /> Carrera
+        </button>
 
         <div className="relative min-w-[220px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -329,13 +357,13 @@ export default function Materias() {
         </Field>
         <div className="grid grid-cols-3 gap-3">
           <Field label="Créditos">
-            <input type="number" min={1} className={inputClass} value={form.creditos} onChange={(e) => setForm({ ...form, creditos: +e.target.value })} required />
+            <input type="number" min={1} className={inputClass} value={form.creditos || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, creditos: +e.target.value || 0 })} required />
           </Field>
           <Field label="Horas/sem">
-            <input type="number" min={1} className={inputClass} value={form.horasSemanales} onChange={(e) => setForm({ ...form, horasSemanales: +e.target.value })} required />
+            <input type="number" min={1} className={inputClass} value={form.horasSemanales || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, horasSemanales: +e.target.value || 0 })} required />
           </Field>
           <Field label="Ciclo">
-            <input type="number" min={1} max={maxCiclo} className={inputClass} value={form.ciclo} onChange={(e) => setForm({ ...form, ciclo: +e.target.value })} required />
+            <input type="number" min={1} max={maxCiclo} className={inputClass} value={form.ciclo || ''} onFocus={(e) => e.target.select()} onChange={(e) => setForm({ ...form, ciclo: +e.target.value || 0 })} required />
           </Field>
         </div>
         <Field label="Tipo de aula">
@@ -357,6 +385,28 @@ export default function Materias() {
               <option key={c.id} value={c.id}>{c.nombre}</option>
             ))}
           </select>
+        </Field>
+      </FormModal>
+
+      {/* ── Create Carrera modal ── */}
+      <FormModal
+        open={carreraModalOpen}
+        title="Nueva Carrera"
+        onClose={() => setCarreraModalOpen(false)}
+        onSubmit={submitCarrera}
+        submitting={createCarrera.isPending}
+      >
+        <Field label="Nombre">
+          <input className={inputClass} value={carreraForm.nombre} onChange={(e) => setCarreraForm({ ...carreraForm, nombre: e.target.value })} required />
+        </Field>
+        <Field label="Código">
+          <input className={inputClass} value={carreraForm.codigo} onChange={(e) => setCarreraForm({ ...carreraForm, codigo: e.target.value })} required />
+        </Field>
+        <Field label="Duración (ciclos)">
+          <input type="number" min={1} max={20} className={inputClass} value={carreraForm.duracionCiclos || ''} onFocus={(e) => e.target.select()} onChange={(e) => setCarreraForm({ ...carreraForm, duracionCiclos: +e.target.value || 0 })} required />
+        </Field>
+        <Field label="Descripción">
+          <textarea className={inputClass + ' min-h-[60px]'} value={carreraForm.descripcion} onChange={(e) => setCarreraForm({ ...carreraForm, descripcion: e.target.value })} />
         </Field>
       </FormModal>
     </div>

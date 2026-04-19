@@ -370,6 +370,39 @@ export function validateSchedule(
     }
   }
 
+  // --- Excess sections validation ---
+  const sectionsBySubject = new Map<string, Set<string>>()
+  for (const b of blocks) {
+    if (!sectionsBySubject.has(b.subjectId)) sectionsBySubject.set(b.subjectId, new Set())
+    sectionsBySubject.get(b.subjectId)!.add(b.sectionLabel)
+  }
+
+  for (const [subjectId, sections] of sectionsBySubject) {
+    const subject = subjectById.get(subjectId)
+    if (!subject) continue
+    const totalStudents = blocks
+      .filter((b) => b.subjectId === subjectId)
+      .reduce((max, b) => Math.max(max, b.studentsExpected), 0)
+
+    const eligibleRooms = rooms.filter((r) => r.tipo === subject.tipoAula)
+    const maxCap = eligibleRooms.length > 0
+      ? Math.max(...eligibleRooms.map((r) => r.capacidad))
+      : 30
+
+    const neededSections = Math.max(1, Math.ceil(totalStudents / maxCap))
+
+    if (sections.size > neededSections) {
+      items.push({
+        severity: 'medium',
+        category: 'Exceso de secciones',
+        message: `${subject.codigo}: ${sections.size} secciones (necesarias: ${neededSections})`,
+        detail: `Con ${totalStudents} estudiantes y aulas de cap. ${maxCap}, solo se necesitan ${neededSections} sección(es).`,
+        action: `Consolida a ${neededSections} sección(es)`,
+        subjectId,
+      })
+    }
+  }
+
   items.sort((a, b) => {
     const order: Record<ValidationSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 }
     return order[a.severity] - order[b.severity]

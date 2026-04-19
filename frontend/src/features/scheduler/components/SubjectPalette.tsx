@@ -1,19 +1,26 @@
 import { useMemo, useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { Search, BookOpen, Sparkles, GripVertical } from 'lucide-react'
+import { Search, BookOpen, Sparkles, GripVertical, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { COLOR_STYLES } from '../colors'
-import type { PaletteDragData, Subject } from '../types'
+import { SLOT_MINUTES } from '../constants'
+import type { PaletteDragData, ScheduleBlock, Subject } from '../types'
 
 type Props = {
   subjects: Subject[]
   cicloFilter: number | null
   onCicloFilterChange: (ciclo: number | null) => void
   sectionCounts: Map<string, number>
+  blocks: ScheduleBlock[]
 }
 
-export function SubjectPalette({ subjects, cicloFilter, onCicloFilterChange, sectionCounts }: Props) {
+export function SubjectPalette({ subjects, cicloFilter, onCicloFilterChange, sectionCounts, blocks }: Props) {
+  const hoursBySubject = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const b of blocks) m.set(b.subjectId, (m.get(b.subjectId) ?? 0) + b.duration)
+    return m
+  }, [blocks])
   const [search, setSearch] = useState('')
 
   const ciclos = useMemo(() => {
@@ -70,9 +77,14 @@ export function SubjectPalette({ subjects, cicloFilter, onCicloFilterChange, sec
           </div>
         ) : (
           <div className="space-y-1.5">
-            {filtered.map((s) => (
-              <PaletteItem key={s.id} subject={s} sections={sectionCounts.get(s.id) ?? 0} />
-            ))}
+            {filtered.map((s) => {
+              const usedSlots = hoursBySubject.get(s.id) ?? 0
+              const requiredSlots = s.horasSemanales * (60 / SLOT_MINUTES)
+              const hoursFulfilled = usedSlots >= requiredSlots
+              return (
+                <PaletteItem key={s.id} subject={s} sections={sectionCounts.get(s.id) ?? 0} hoursFulfilled={hoursFulfilled} usedSlots={usedSlots} />
+              )
+            })}
           </div>
         )}
       </div>
@@ -110,12 +122,14 @@ function FilterChip({
   )
 }
 
-function PaletteItem({ subject, sections }: { subject: Subject; sections: number }) {
+function PaletteItem({ subject, sections, hoursFulfilled, usedSlots }: { subject: Subject; sections: number; hoursFulfilled: boolean; usedSlots: number }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `palette-${subject.id}`,
     data: { type: 'palette', subjectId: subject.id } satisfies PaletteDragData,
+    disabled: hoursFulfilled,
   })
   const color = COLOR_STYLES[subject.color] ?? { bg: 'bg-muted/50', border: 'border-muted', text: 'text-muted-foreground' }
+  const usedHours = (usedSlots * SLOT_MINUTES) / 60
 
   return (
     <div
@@ -124,13 +138,19 @@ function PaletteItem({ subject, sections }: { subject: Subject; sections: number
       {...attributes}
       {...listeners}
       className={cn(
-        'group flex cursor-grab items-center gap-2 rounded-md border p-2 transition-all select-none',
+        'group flex items-center gap-2 rounded-md border p-2 transition-all select-none',
         color.bg,
         color.border,
-        isDragging ? 'cursor-grabbing opacity-80 shadow-dark-xl' : 'hover:shadow-dark-lg hover:-translate-y-px'
+        hoursFulfilled
+          ? 'opacity-60 cursor-default'
+          : isDragging ? 'cursor-grabbing opacity-80 shadow-dark-xl' : 'cursor-grab hover:shadow-dark-lg hover:-translate-y-px'
       )}
     >
-      <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      {hoursFulfilled ? (
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-status-success" />
+      ) : (
+        <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className={cn('font-mono text-[10px] font-semibold', color.text)}>{subject.codigo}</span>
@@ -143,7 +163,7 @@ function PaletteItem({ subject, sections }: { subject: Subject; sections: number
         </div>
         <p className="mt-0.5 truncate text-[11px] font-medium text-foreground">{subject.nombre}</p>
         <p className="text-[9px] text-muted-foreground">
-          {subject.horasSemanales}h sem · {subject.creditos} cr
+          {usedSlots > 0 ? `${usedHours}h / ${subject.horasSemanales}h` : `${subject.horasSemanales}h sem`} · {subject.creditos} cr
         </p>
       </div>
     </div>

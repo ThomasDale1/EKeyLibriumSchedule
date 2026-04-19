@@ -80,6 +80,20 @@ export function InspectorPanel({
           </span>
           <span className="text-muted-foreground">{slotsToLabel(block.duration)}</span>
         </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <span className="rounded bg-black/15 px-1.5 py-0.5 text-[10px] text-foreground">
+            {subject.creditos} créditos
+          </span>
+          <span className="rounded bg-black/15 px-1.5 py-0.5 text-[10px] text-foreground">
+            {subject.horasSemanales}h/sem
+          </span>
+          <span className="rounded bg-black/15 px-1.5 py-0.5 text-[10px] text-foreground">
+            Ciclo {subject.ciclo}
+          </span>
+          <span className="rounded bg-black/15 px-1.5 py-0.5 text-[10px] text-foreground">
+            {subject.tipoAula}
+          </span>
+        </div>
       </div>
 
       {conflicts && conflicts.length > 0 && (
@@ -130,11 +144,24 @@ export function InspectorPanel({
             className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm focus:border-status-warning/50 focus:outline-none disabled:opacity-50"
           >
             <option value="">— Sin asignar —</option>
-            {rooms.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.codigo} — {r.nombre} (cap. {r.capacidad}, {r.tipo})
-              </option>
-            ))}
+            {rooms
+              .filter((r) => r.capacidad >= block.studentsExpected && r.tipo === subject.tipoAula)
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.codigo} — {r.nombre} (cap. {r.capacidad})
+                </option>
+              ))}
+            {rooms.filter((r) => r.capacidad < block.studentsExpected || r.tipo !== subject.tipoAula).length > 0 && (
+              <optgroup label="No recomendadas">
+                {rooms
+                  .filter((r) => r.capacidad < block.studentsExpected || r.tipo !== subject.tipoAula)
+                  .map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.codigo} — {r.nombre} (cap. {r.capacidad}, {r.tipo})
+                    </option>
+                  ))}
+              </optgroup>
+            )}
           </select>
         </Field>
 
@@ -153,6 +180,7 @@ export function InspectorPanel({
             min={1}
             disabled={block.locked}
             value={block.studentsExpected}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => onUpdate({ studentsExpected: Math.max(1, parseInt(e.target.value) || 1) })}
             className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm focus:border-status-warning/50 focus:outline-none disabled:opacity-50"
           />
@@ -166,6 +194,7 @@ export function InspectorPanel({
               max={20}
               disabled={block.locked}
               value={block.duration}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => onUpdate({ duration: Math.min(20, Math.max(1, parseInt(e.target.value) || 1)) })}
               className="h-9 w-20 rounded-md border border-border bg-background px-2 text-sm focus:border-status-warning/50 focus:outline-none disabled:opacity-50"
             />

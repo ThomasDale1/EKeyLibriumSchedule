@@ -10,6 +10,23 @@ import {
   StickyNote,
   Trash2,
 } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
 import { useLimitacionesStore } from '../limitaciones'
 import {
@@ -112,7 +129,8 @@ function LimitacionesTab() {
           <input
             type="number"
             min={0}
-            value={limitaciones.parqueoMax}
+            value={limitaciones.parqueoMax || ''}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setLimitaciones({ parqueoMax: Math.max(0, +e.target.value) })}
             className="h-7 w-16 rounded-md border border-border bg-background px-2 text-right text-xs"
           />
@@ -136,6 +154,7 @@ function LimitacionesTab() {
             min={0}
             placeholder="Sin límite"
             value={limitaciones.maxHorasConsecutivas ?? ''}
+            onFocus={(e) => e.target.select()}
             onChange={(e) =>
               setLimitaciones({
                 maxHorasConsecutivas: e.target.value ? Math.max(1, +e.target.value) : null,
@@ -148,7 +167,8 @@ function LimitacionesTab() {
           <input
             type="number"
             min={0}
-            value={limitaciones.descansoMinSlots}
+            value={limitaciones.descansoMinSlots || ''}
+            onFocus={(e) => e.target.select()}
             onChange={(e) => setLimitaciones({ descansoMinSlots: Math.max(0, +e.target.value) })}
             className="h-7 w-16 rounded-md border border-border bg-background px-2 text-right text-xs"
           />
@@ -159,6 +179,7 @@ function LimitacionesTab() {
             min={0}
             placeholder="Sin límite"
             value={limitaciones.maxBloquesPorDiaPorMateria ?? ''}
+            onFocus={(e) => e.target.select()}
             onChange={(e) =>
               setLimitaciones({
                 maxBloquesPorDiaPorMateria: e.target.value ? Math.max(1, +e.target.value) : null,
@@ -191,6 +212,7 @@ function LimitacionesTab() {
             min={0}
             placeholder="Sin límite"
             value={limitaciones.maxSeccionesPorMateria ?? ''}
+            onFocus={(e) => e.target.select()}
             onChange={(e) =>
               setLimitaciones({
                 maxSeccionesPorMateria: e.target.value ? Math.max(1, +e.target.value) : null,
@@ -298,10 +320,26 @@ function LimitacionesTab() {
 // ── Prioridades Tab ──
 
 function PrioridadesTab() {
-  const { mode, stack, weights, setMode, moveStackItem, setWeight, resetPrioridades } =
+  const { mode, stack, weights, setMode, moveStackItem, setWeight, resetPrioridades, setStack } =
     usePrioridadesStore()
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
   const totalWeight = Object.values(weights).reduce((s, w) => s + w, 0)
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      const oldIndex = stack.indexOf(active.id as any)
+      const newIndex = stack.indexOf(over.id as any)
+      setStack(arrayMove(stack, oldIndex, newIndex))
+    }
+  }
 
   return (
     <div className="space-y-4 p-3">
@@ -316,49 +354,35 @@ function PrioridadesTab() {
 
       {mode === 'stack' ? (
         <div className="space-y-1">
-          <p className="text-[10px] text-muted-foreground">
-            Usa las flechas para reordenar. La primera tiene mayor prioridad.
+          <p className="mb-2 text-[10px] text-muted-foreground">
+            Arrastra para reordenar. El primer elemento tiene la mayor prioridad.
           </p>
-          {stack.map((id, index) => {
-            const info = PRIORIDADES_CATALOG.find((p) => p.id === id)
-            if (!info) return null
-            return (
-              <div
-                key={id}
-                className={cn(
-                  'flex items-center gap-2 rounded-lg border border-border bg-card p-2 transition-colors hover:border-status-warning/30',
-                  info.critical && 'border-status-critical/30 bg-status-critical/5',
-                )}
-              >
-                <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" role="presentation" aria-hidden="true" />
-                <span className="mr-1 rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-medium text-foreground">{info.label}</p>
-                  <p className="text-[9px] text-muted-foreground">{info.description}</p>
-                </div>
-                <div className="flex flex-col">
-                  <button
-                    disabled={index === 0}
-                    onClick={() => moveStackItem(index, index - 1)}
-                    aria-label={`Mover ${info.label} arriba`}
-                    className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  >
-                    <ArrowUp className="h-3 w-3" />
-                  </button>
-                  <button
-                    disabled={index === stack.length - 1}
-                    onClick={() => moveStackItem(index, index + 1)}
-                    aria-label={`Mover ${info.label} abajo`}
-                    className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  >
-                    <ArrowDown className="h-3 w-3" />
-                  </button>
-                </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={stack} strategy={verticalListSortingStrategy}>
+              <div className="space-y-1">
+                {stack.map((id, index) => {
+                  const info = PRIORIDADES_CATALOG.find((p) => p.id === id)
+                  if (!info) return null
+                  return (
+                    <SortablePriorityItem
+                      key={id}
+                      id={id}
+                      index={index}
+                      info={info}
+                      isFirst={index === 0}
+                      isLast={index === stack.length - 1}
+                      onMoveUp={() => moveStackItem(index, index - 1)}
+                      onMoveDown={() => moveStackItem(index, index + 1)}
+                    />
+                  )
+                })}
               </div>
-            )
-          })}
+            </SortableContext>
+          </DndContext>
         </div>
       ) : (
         <div className="space-y-2">
@@ -406,6 +430,103 @@ function PrioridadesTab() {
         <RotateCcw className="h-3 w-3" />
         Restaurar por defecto
       </button>
+    </div>
+  )
+}
+
+function SortablePriorityItem({
+  id,
+  index,
+  info,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+}: {
+  id: string
+  index: number
+  info: any
+  onMoveUp: () => void
+  onMoveDown: () => void
+  isFirst: boolean
+  isLast: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  })
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'group flex items-center gap-2 rounded-lg border border-border bg-card p-2 transition-colors',
+        !isDragging && 'hover:border-status-warning/30',
+        isDragging && 'z-50 border-status-warning bg-card shadow-xl opacity-90',
+        // Dynamic coloring based on position (1st, 2nd, 3rd)
+        !isDragging && index === 0 && 'border-status-warning bg-status-warning/5',
+        !isDragging && index === 1 && 'border-status-warning/60 bg-status-warning/[0.02]',
+        !isDragging && index === 2 && 'border-status-warning/30 bg-status-warning/[0.01]',
+      )}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab p-1 -ml-1 rounded hover:bg-muted active:cursor-grabbing"
+      >
+        <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground" />
+      </div>
+
+      <span
+        className={cn(
+          'mr-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold transition-colors',
+          index === 0
+            ? 'bg-status-warning text-white'
+            : index === 1
+              ? 'bg-status-warning/60 text-white'
+              : index === 2
+                ? 'bg-status-warning/30 text-white'
+                : 'bg-muted text-muted-foreground',
+        )}
+      >
+        {index + 1}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className={cn('text-[11px] font-medium text-foreground', index === 0 && 'text-status-warning')}>
+          {info.label}
+        </p>
+        <p className="truncate text-[9px] text-muted-foreground">{info.description}</p>
+      </div>
+
+      <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          disabled={isFirst}
+          onClick={(e) => {
+            e.stopPropagation()
+            onMoveUp()
+          }}
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-0"
+        >
+          <ArrowUp className="h-3 w-3" />
+        </button>
+        <button
+          disabled={isLast}
+          onClick={(e) => {
+            e.stopPropagation()
+            onMoveDown()
+          }}
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-0"
+        >
+          <ArrowDown className="h-3 w-3" />
+        </button>
+      </div>
     </div>
   )
 }

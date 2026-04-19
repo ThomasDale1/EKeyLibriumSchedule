@@ -203,8 +203,28 @@ export function ScheduleBuilder() {
     [addBlockFromSubject, blocks, duplicateBlock, moveBlock, removeBlock]
   )
 
-  const totalConflicts = conflicts.size
-  const totalHours = blocks.reduce((sum, b) => sum + b.duration, 0) / 2
+  const filteredBlocks = useMemo(() => {
+    if (cicloFilter == null) return blocks
+    const cicloSubjects = new Set(subjects.filter((s) => s.ciclo === cicloFilter).map((s) => s.id))
+    return blocks.filter((b) => cicloSubjects.has(b.subjectId))
+  }, [blocks, subjects, cicloFilter])
+
+  const filteredConflicts = useMemo(() => {
+    if (cicloFilter == null) return conflicts.size
+    let count = 0
+    for (const b of filteredBlocks) {
+      if (conflicts.has(b.id)) count++
+    }
+    return count
+  }, [conflicts, filteredBlocks, cicloFilter])
+
+  const totalHoursRequired = useMemo(() => {
+    if (cicloFilter == null) return null
+    return subjects.filter((s) => s.ciclo === cicloFilter).reduce((sum, s) => sum + s.horasSemanales, 0)
+  }, [subjects, cicloFilter])
+
+  const totalConflicts = filteredConflicts
+  const totalHours = filteredBlocks.reduce((sum, b) => sum + b.duration, 0) / 2
 
   if (dataLoading) {
     return (
@@ -244,12 +264,14 @@ export function ScheduleBuilder() {
 
         <div className="flex flex-wrap items-center gap-2">
           <StatChip>
-            <span className="text-muted-foreground">Bloques</span>
-            <span className="font-semibold text-foreground">{blocks.length}</span>
+            <span className="text-muted-foreground">{cicloFilter != null ? `Bloques C${cicloFilter}` : 'Bloques'}</span>
+            <span className="font-semibold text-foreground">{filteredBlocks.length}</span>
           </StatChip>
           <StatChip>
-            <span className="text-muted-foreground">Horas/sem</span>
-            <span className="font-semibold text-foreground">{totalHours.toFixed(1)}h</span>
+            <span className="text-muted-foreground">{cicloFilter != null ? `Horas C${cicloFilter}` : 'Horas/sem'}</span>
+            <span className="font-semibold text-foreground">
+              {totalHours.toFixed(1)}h{totalHoursRequired != null ? ` / ${totalHoursRequired}h` : ''}
+            </span>
           </StatChip>
           {totalConflicts > 0 ? (
             <StatChip tone="critical">
@@ -287,6 +309,7 @@ export function ScheduleBuilder() {
               cicloFilter={cicloFilter}
               onCicloFilterChange={setCicloFilter}
               sectionCounts={sectionCounts}
+              blocks={blocks}
             />
           </div>
 

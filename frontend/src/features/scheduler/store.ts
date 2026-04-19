@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Professor, Room, ScheduleBlock, Subject } from './types'
-import { DEFAULT_DURATION_SLOTS, MIN_DURATION_SLOTS, TOTAL_SLOTS } from './constants'
+import { DEFAULT_DURATION_SLOTS, MIN_DURATION_SLOTS, SLOT_MINUTES, TOTAL_SLOTS } from './constants'
 
 let uidCounter = 1000
 const nextId = (prefix = 'b') => `${prefix}${Date.now().toString(36)}${++uidCounter}`
@@ -106,11 +106,19 @@ export const useScheduleStore = create<State & Actions>()(
           if (!subject) return state
           const duration = DEFAULT_DURATION_SLOTS
           const active = state.schedules.find((s) => s.id === state.activeScheduleId)
-          const sectionCount = active?.blocks.filter((b) => b.subjectId === subjectId).length ?? 0
+          const existingBlocks = active?.blocks.filter((b) => b.subjectId === subjectId) ?? []
+
+          const totalSlots = existingBlocks.reduce((sum, b) => sum + b.duration, 0)
+          const requiredSlots = subject.horasSemanales * (60 / SLOT_MINUTES)
+          if (totalSlots >= requiredSlots) return state
+
+          const lastSection = existingBlocks.length > 0
+            ? existingBlocks[existingBlocks.length - 1].sectionLabel
+            : '01'
           const block: ScheduleBlock = {
             id: nextId('b'),
             subjectId,
-            sectionLabel: String(sectionCount + 1).padStart(2, '0'),
+            sectionLabel: lastSection,
             professorId: null,
             roomId: null,
             day: clampDay(day),
